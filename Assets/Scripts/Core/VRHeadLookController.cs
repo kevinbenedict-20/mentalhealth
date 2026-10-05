@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.XR;
-using System.Collections.Generic;
+using System;
+using System.Reflection;
 
 namespace MentalHealthApp.Core
 {
@@ -41,27 +42,92 @@ namespace MentalHealthApp.Core
                 }
             }
 
-            // Desktop VR Simulation: Mouse Drag / Right-Click Look Around
-            if (Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(0))
+            // Safe cross-input system mouse reading without throwing InvalidOperationException
+            bool mousePressed = false;
+            bool mouseReleased = false;
+            Vector3 mousePos = Vector3.zero;
+
+            GetCrossSystemMouseInput(out mousePressed, out mouseReleased, out mousePos);
+
+            if (mousePressed)
             {
                 isDragging = true;
-                lastMousePosition = Input.mousePosition;
+                lastMousePosition = mousePos;
             }
-            if (Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(0))
+            if (mouseReleased)
             {
                 isDragging = false;
             }
 
             if (isDragging && isFirstPersonPOV)
             {
-                Vector3 delta = Input.mousePosition - lastMousePosition;
-                lastMousePosition = Input.mousePosition;
+                Vector3 delta = mousePos - lastMousePosition;
+                lastMousePosition = mousePos;
 
                 currentYaw += delta.x * mouseSensitivity * 0.1f;
                 currentPitch -= delta.y * mouseSensitivity * 0.1f;
                 currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
 
                 transform.rotation = Quaternion.Euler(currentPitch, currentYaw, 0);
+            }
+        }
+
+        private void GetCrossSystemMouseInput(out bool mousePressed, out bool mouseReleased, out Vector3 mousePos)
+        {
+            mousePressed = false;
+            mouseReleased = false;
+            mousePos = Vector3.zero;
+
+            // Try New Input System via Reflection first to prevent InvalidOperationException
+            Type mouseType = Type.GetType("UnityEngine.InputSystem.Mouse, Unity.InputSystem");
+            if (mouseType != null)
+            {
+                PropertyInfo currentMouseProp = mouseType.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
+                object currentMouse = currentMouseProp?.GetValue(null);
+
+                if (currentMouse != null)
+                {
+                    // Read position
+                    PropertyInfo positionProp = mouseType.GetProperty("position");
+                    object posControl = positionProp?.GetValue(currentMouse);
+                    if (posControl != null)
+                    {
+                        MethodInfo readValueMethod = posControl.GetType().GetMethod("ReadValue");
+                        if (readValueMethod != null)
+                        {
+                            Vector2 val = (Vector2)readValueMethod.Invoke(posControl, null);
+                            mousePos = new Vector3(val.x, val.y, 0);
+                        }
+                    }
+
+                    // Read mouse button press
+                    PropertyInfo rightButtonProp = mouseType.GetProperty("rightButton");
+                    PropertyInfo leftButtonProp = mouseType.GetProperty("leftButton");
+                    object btnControl = rightButtonProp?.GetValue(currentMouse) ?? leftButtonProp?.GetValue(currentMouse);
+                    if (btnControl != null)
+                    {
+                        PropertyInfo pressedProp = btnControl.GetType().GetProperty("wasPressedThisFrame");
+                        PropertyInfo releasedProp = btnControl.GetType().GetProperty("wasReleasedThisFrame");
+                        PropertyInfo isPressedProp = btnControl.GetType().GetProperty("isPressed");
+
+                        if (pressedProp != null && (bool)pressedProp.GetValue(btnControl)) mousePressed = true;
+                        if (releasedProp != null && (bool)releasedProp.GetValue(btnControl)) mouseReleased = true;
+                        if (isPressedProp != null && (bool)isPressedProp.GetValue(btnControl) && !mousePressed) mousePressed = true;
+                    }
+                    return;
+                }
+            }
+
+            // Legacy Input fallback wrapped safely
+            try
+            {
+                mousePos = Input.mousePosition;
+                mousePressed = Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1);
+                mouseReleased = Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1);
+            }
+            catch
+            {
+                // Swallowed safely if New Input System package is active
             }
         }
 
