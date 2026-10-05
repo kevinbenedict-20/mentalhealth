@@ -95,12 +95,19 @@ namespace MentalHealthApp.Discussion
             {
                 StudentAvatarData facilitator = avatarGenerator.generatedAvatars[0]; // Maya
                 FocusCameraOnAvatar(facilitator);
+                SetAvatarExpression(facilitator, AvatarExpression.Speaking);
+                SetGroupExpressionExcept(facilitator, AvatarExpression.Empathetic);
+
                 ShowSpeechBubble(facilitator, introText);
                 if (uiController != null) uiController.ShowSubtitle(facilitator.studentName + " (Leader)", introText, badgeColors[0]);
                 recentDialogueHistory.Add(facilitator.studentName + ": " + introText);
             }
             yield return new WaitForSeconds(5f);
             if (uiController != null) uiController.HideSubtitle();
+            if (avatarGenerator != null && avatarGenerator.generatedAvatars.Count > 0)
+            {
+                SetAvatarExpression(avatarGenerator.generatedAvatars[0], AvatarExpression.Neutral);
+            }
 
             // Loop through Topics
             for (int t = 0; t < topics.Length; t++)
@@ -118,14 +125,15 @@ namespace MentalHealthApp.Discussion
                     StudentAvatarData peerAvatar = avatarGenerator.generatedAvatars[p];
                     Color badgeCol = (p < badgeColors.Length) ? badgeColors[p] : Color.cyan;
 
-                    // Focus camera directly on speaking peer's face so student sees them clearly
                     FocusCameraOnAvatar(peerAvatar);
                     OrientHeadsTowards(peerAvatar.headTransform.position);
+
+                    SetAvatarExpression(peerAvatar, AvatarExpression.Speaking);
+                    SetGroupExpressionExcept(peerAvatar, AvatarExpression.Thinking);
 
                     bool aiGenerated = false;
                     string dialogueText = "";
 
-                    // Generate AI dialogue using Gemini API key
                     if (p == 4) // Seat 4 asks a question to prompt group & student
                     {
                         yield return geminiAgent.GeneratePeerQuestion(
@@ -168,6 +176,7 @@ namespace MentalHealthApp.Discussion
                     yield return new WaitForSeconds(5.5f);
                     HideSpeechBubble(peerAvatar);
                     if (uiController != null) uiController.HideSubtitle();
+                    SetAvatarExpression(peerAvatar, AvatarExpression.Empathetic);
                 }
 
                 // Assessed Student's Turn (Seat 1 - Alex / Player)
@@ -177,6 +186,7 @@ namespace MentalHealthApp.Discussion
                 
                 ResetCameraToOverview();
                 OrientHeadsTowards(assessedAvatar.headTransform.position);
+                SetGroupExpressionExcept(assessedAvatar, AvatarExpression.Thinking);
 
                 UpdateScreen(topicHeader, "YOUR TURN: Select or type your response to participate in the discussion.", "STATUS: AWAITING YOUR INPUT");
 
@@ -189,6 +199,7 @@ namespace MentalHealthApp.Discussion
                     wellnessTracker.RecordAssessedStudentResponse(selectedOptionText, confidenceRating);
                     
                     FocusCameraOnAvatar(assessedAvatar);
+                    SetAvatarExpression(assessedAvatar, AvatarExpression.Speaking);
                     ShowSpeechBubble(assessedAvatar, selectedOptionText);
                     if (uiController != null) uiController.ShowSubtitle(assessedAvatar.studentName + " (You)", selectedOptionText, badgeColors[1]);
                     recentDialogueHistory.Add("You: " + selectedOptionText);
@@ -204,6 +215,7 @@ namespace MentalHealthApp.Discussion
                 yield return new WaitForSeconds(4f);
                 HideSpeechBubble(assessedAvatar);
                 if (uiController != null) uiController.HideSubtitle();
+                SetAvatarExpression(assessedAvatar, AvatarExpression.Neutral);
 
                 // Dynamic AI Peer Response Turn (Discussion Leader Maya - Seat 0)
                 currentPhase = DiscussionPhase.PeerAIResponseTurn;
@@ -212,6 +224,9 @@ namespace MentalHealthApp.Discussion
                 
                 FocusCameraOnAvatar(leaderAvatar);
                 OrientHeadsTowards(leaderAvatar.headTransform.position);
+
+                SetAvatarExpression(leaderAvatar, AvatarExpression.Speaking);
+                SetGroupExpressionExcept(leaderAvatar, AvatarExpression.Empathetic);
 
                 UpdateScreen(topicHeader, "Maya is reflecting on your thoughts...", "STATUS: AI PEER GENERATING RESPONSE");
 
@@ -243,6 +258,7 @@ namespace MentalHealthApp.Discussion
                 yield return new WaitForSeconds(6f);
                 HideSpeechBubble(leaderAvatar);
                 if (uiController != null) uiController.HideSubtitle();
+                SetAvatarExpression(leaderAvatar, AvatarExpression.Empathetic);
             }
 
             // Post-Discussion Phase
@@ -252,6 +268,34 @@ namespace MentalHealthApp.Discussion
 
             yield return new WaitForSeconds(3f);
             uiController.ShowPostAssessmentModal();
+        }
+
+        private void SetAvatarExpression(StudentAvatarData avatar, AvatarExpression expr)
+        {
+            if (avatar != null && avatar.avatarRoot != null)
+            {
+                var exprCtrl = avatar.avatarRoot.GetComponent<AvatarExpressionController>();
+                if (exprCtrl != null)
+                {
+                    exprCtrl.SetExpression(expr);
+                }
+            }
+        }
+
+        private void SetGroupExpressionExcept(StudentAvatarData activeSpeaker, AvatarExpression expr)
+        {
+            if (avatarGenerator == null || avatarGenerator.generatedAvatars == null) return;
+            foreach (var a in avatarGenerator.generatedAvatars)
+            {
+                if (a != activeSpeaker && a.avatarRoot != null)
+                {
+                    var exprCtrl = a.avatarRoot.GetComponent<AvatarExpressionController>();
+                    if (exprCtrl != null)
+                    {
+                        exprCtrl.SetExpression(expr);
+                    }
+                }
+            }
         }
 
         private void FocusCameraOnAvatar(StudentAvatarData avatar)
