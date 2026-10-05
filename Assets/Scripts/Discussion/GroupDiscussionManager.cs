@@ -364,7 +364,7 @@ namespace MentalHealthApp.Discussion
         {
             if (avatar != null && avatar.speechBubbleObj != null)
             {
-                avatar.speechBubbleObj.SetActive(true);
+                avatar.speechBubbleObj.SetActive(false);
                 if (avatar.speechBubbleText != null)
                 {
                     avatar.speechBubbleText.text = "\"" + text + "\"";
