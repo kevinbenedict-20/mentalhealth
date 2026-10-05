@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using MentalHealthApp.Generators;
 using MentalHealthApp.Assessment;
 using MentalHealthApp.UI;
+using MentalHealthApp.Core;
 
 namespace MentalHealthApp.Discussion
 {
@@ -18,10 +19,18 @@ namespace MentalHealthApp.Discussion
         Completed
     }
 
+    public enum CameraVRMode
+    {
+        FirstPersonPOV,
+        SpeakerFocus,
+        Overview
+    }
+
     public class GroupDiscussionManager : MonoBehaviour
     {
         [Header("State")]
         public DiscussionPhase currentPhase = DiscussionPhase.PreSession;
+        public CameraVRMode currentVRMode = CameraVRMode.FirstPersonPOV;
         public int currentTopicIndex = 0;
         public int currentSpeakerIndex = 0;
         public float phaseTimer = 0f;
@@ -32,6 +41,7 @@ namespace MentalHealthApp.Discussion
         public StudentWellnessTracker wellnessTracker;
         public WellnessUIController uiController;
         public GeminiDiscussionAgent geminiAgent;
+        public VRHeadLookController vrHeadLook;
 
         private Coroutine discussionRoutine;
         private Coroutine cameraFocusRoutine;
@@ -79,10 +89,44 @@ namespace MentalHealthApp.Discussion
                 geminiAgent.apiKey = string.Empty;
             }
 
+            EnsureVRController();
+
             recentDialogueHistory.Clear();
             currentPhase = DiscussionPhase.Introduction;
+
+            // Automatically seat user in VR First-Person POV at Seat 1 when GD starts!
+            SwitchToVRSeatPOV();
+
             if (discussionRoutine != null) StopCoroutine(discussionRoutine);
             discussionRoutine = StartCoroutine(RunDiscussionLoop());
+        }
+
+        private void EnsureVRController()
+        {
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                vrHeadLook = mainCam.GetComponent<VRHeadLookController>();
+                if (vrHeadLook == null) vrHeadLook = mainCam.gameObject.AddComponent<VRHeadLookController>();
+            }
+        }
+
+        public void SwitchToVRSeatPOV()
+        {
+            EnsureVRController();
+            currentVRMode = CameraVRMode.FirstPersonPOV;
+
+            // Seat 1 - Assessed Student Alex's seat position
+            Vector3 seatPos = new Vector3(-0.95f, 0, -1.35f);
+            if (avatarGenerator != null && avatarGenerator.generatedAvatars.Count > 1 && avatarGenerator.generatedAvatars[1].avatarRoot != null)
+            {
+                seatPos = avatarGenerator.generatedAvatars[1].avatarRoot.transform.position;
+            }
+
+            if (vrHeadLook != null)
+            {
+                vrHeadLook.SetSeatPOVPosition(seatPos, Quaternion.identity);
+            }
         }
 
         private IEnumerator RunDiscussionLoop()
@@ -184,7 +228,7 @@ namespace MentalHealthApp.Discussion
                 currentSpeakerIndex = 1;
                 StudentAvatarData assessedAvatar = avatarGenerator.generatedAvatars[1];
                 
-                ResetCameraToOverview();
+                SwitchToVRSeatPOV();
                 OrientHeadsTowards(assessedAvatar.headTransform.position);
                 SetGroupExpressionExcept(assessedAvatar, AvatarExpression.Thinking);
 
@@ -301,6 +345,7 @@ namespace MentalHealthApp.Discussion
         private void FocusCameraOnAvatar(StudentAvatarData avatar)
         {
             if (Camera.main == null || avatar == null || avatar.headTransform == null) return;
+            currentVRMode = CameraVRMode.SpeakerFocus;
 
             Vector3 avatarHeadPos = avatar.headTransform.position + new Vector3(0, 0.05f, 0);
             Vector3 avatarForward = avatar.avatarRoot != null ? avatar.avatarRoot.transform.forward : avatar.headTransform.forward;
@@ -316,6 +361,7 @@ namespace MentalHealthApp.Discussion
         private void ResetCameraToOverview()
         {
             if (Camera.main == null) return;
+            currentVRMode = CameraVRMode.Overview;
             if (cameraFocusRoutine != null) StopCoroutine(cameraFocusRoutine);
             cameraFocusRoutine = StartCoroutine(SmoothMoveCamera(defaultCamPos, defaultCamRot, 0.9f));
         }

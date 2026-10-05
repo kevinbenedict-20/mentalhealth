@@ -103,6 +103,7 @@ namespace MentalHealthApp.UI
             SetupResultsDashboardUI();
             SetupSubtitleUI();
             SetupChatHistoryUI();
+            SetupVRViewControlsUI();
 
             // Default State
             preAssessmentPanel.SetActive(true);
@@ -241,6 +242,34 @@ namespace MentalHealthApp.UI
             }
         }
 
+        private void SetupVRViewControlsUI()
+        {
+            // VR Mode Button on top left
+            GameObject vrBtnObj = new GameObject("VRSeatPOVButton");
+            vrBtnObj.transform.SetParent(transform, false);
+            RectTransform vrRect = vrBtnObj.AddComponent<RectTransform>();
+            vrRect.anchorMin = new Vector2(0, 1);
+            vrRect.anchorMax = new Vector2(0, 1);
+            vrRect.anchoredPosition = new Vector2(130, -50);
+            vrRect.sizeDelta = new Vector2(210, 45);
+
+            Image img = vrBtnObj.AddComponent<Image>();
+            img.color = new Color(0.12f, 0.45f, 0.68f, 0.92f);
+            Button vrBtn = vrBtnObj.AddComponent<Button>();
+            vrBtn.targetGraphic = img;
+
+            GameObject tObj = AddText(vrBtnObj, "🥽 VR Seat 360°", 16, Color.white, new Vector2(200, 35), Vector3.zero);
+            tObj.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+            vrBtn.onClick.AddListener(() =>
+            {
+                if (discussionManager != null)
+                {
+                    discussionManager.SwitchToVRSeatPOV();
+                }
+            });
+        }
+
         private void SetupChatHistoryUI()
         {
             // Toggle Chat Log Button on top right
@@ -316,7 +345,7 @@ namespace MentalHealthApp.UI
             geminiApiKeyInput = keyObj.AddComponent<TMP_InputField>();
             geminiApiKeyInput.contentType = TMP_InputField.ContentType.Password;
 
-            GameObject keyPlaceholder = AddText(keyObj, "Gemini API Key (Pre-set: AQ.Ab8RN6LFPfoer9d1s...)", 16, Color.gray, new Vector2(500, 35));
+            GameObject keyPlaceholder = AddText(keyObj, "Gemini API Key (Optional for Live AI Peers)", 16, Color.gray, new Vector2(500, 35));
             geminiApiKeyInput.placeholder = keyPlaceholder.GetComponent<TextMeshProUGUI>();
 
             GameObject keyTextArea = AddText(keyObj, "", 18, Color.white, new Vector2(500, 35));
