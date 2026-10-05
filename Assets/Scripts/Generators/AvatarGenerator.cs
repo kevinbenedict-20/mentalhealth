@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using MentalHealthApp.Discussion;
@@ -12,38 +13,38 @@ namespace MentalHealthApp.Generators
 
         private string[] studentNames = new string[]
         {
-            "Maya (Discussion Leader)",   // Center Back (Purple Hoodie - Facilitator)
-            "Alex (Assessed Student)",     // Foreground Left (Cream/Striped Sweater)
-            "Karan (Peer)",                // Mid Left (Green Hoodie)
-            "Arjun (Peer)",                // Mid Right (Dark Blue Hoodie + Glasses)
-            "Priya (Peer)"                 // Foreground Right (Burgundy Sweater)
+            "Maya (Discussion Leader)",   // Seat 0 - Purple Hoodie
+            "Alex (Assessed Student)",     // Seat 1 - Cream Sweater
+            "Karan (Peer)",                // Seat 2 - Green Hoodie
+            "Arjun (Peer)",                // Seat 3 - Dark Blue Hoodie + Glasses
+            "Priya (Peer)"                 // Seat 4 - Burgundy Sweater
         };
 
         private Color[] shirtColors = new Color[]
         {
-            new Color(0.52f, 0.32f, 0.72f), // Purple Hoodie (Maya - Center Back)
-            new Color(0.88f, 0.82f, 0.68f), // Cream Striped Sweater (Alex - Foreground Left)
-            new Color(0.25f, 0.48f, 0.35f), // Green Hoodie (Karan - Mid Left)
-            new Color(0.18f, 0.32f, 0.58f), // Dark Blue Hoodie (Arjun - Mid Right)
-            new Color(0.65f, 0.18f, 0.22f)  // Burgundy Sweater (Priya - Foreground Right)
+            new Color(0.48f, 0.28f, 0.68f), // Maya - Purple
+            new Color(0.86f, 0.80f, 0.68f), // Alex - Cream
+            new Color(0.22f, 0.45f, 0.32f), // Karan - Green
+            new Color(0.16f, 0.28f, 0.52f), // Arjun - Dark Blue
+            new Color(0.62f, 0.16f, 0.20f)  // Priya - Burgundy
         };
 
         private Color[] skinTones = new Color[]
         {
-            new Color(0.88f, 0.72f, 0.58f),
-            new Color(0.92f, 0.76f, 0.65f),
-            new Color(0.75f, 0.55f, 0.4f),
-            new Color(0.6f, 0.42f, 0.3f),
-            new Color(0.85f, 0.68f, 0.55f)
+            new Color(0.88f, 0.72f, 0.58f), // Maya - Warm Beige
+            new Color(0.92f, 0.78f, 0.66f), // Alex - Light Warm
+            new Color(0.72f, 0.52f, 0.38f), // Karan - Medium Tan
+            new Color(0.58f, 0.40f, 0.28f), // Arjun - Deep Warm
+            new Color(0.84f, 0.66f, 0.52f)  // Priya - Olive Warm
         };
 
         private Color[] hairColors = new Color[]
         {
-            new Color(0.08f, 0.08f, 0.08f), // Long black hair
-            new Color(0.12f, 0.12f, 0.12f), // Dark hair bun
-            new Color(0.15f, 0.12f, 0.1f),  // Curly dark hair
-            new Color(0.1f, 0.1f, 0.1f),    // Dark hair + glasses
-            new Color(0.35f, 0.18f, 0.12f)  // Long reddish-brown hair
+            new Color(0.08f, 0.08f, 0.08f), // Maya - Black
+            new Color(0.14f, 0.12f, 0.10f), // Alex - Dark Brown
+            new Color(0.18f, 0.14f, 0.10f), // Karan - Chestnut
+            new Color(0.09f, 0.09f, 0.09f), // Arjun - Black
+            new Color(0.32f, 0.16f, 0.10f)  // Priya - Auburn
         };
 
         public void GenerateAvatars(List<Transform> seatAnchors)
@@ -64,7 +65,7 @@ namespace MentalHealthApp.Generators
 
                 bool isAssessed = (i == 1);
 
-                StudentAvatarData avatarData = BuildHumanoidAvatar(
+                StudentAvatarData avatarData = BuildNormalHumanAvatar(
                     studentNames[i],
                     "STU_" + (1000 + i),
                     isAssessed,
@@ -81,103 +82,115 @@ namespace MentalHealthApp.Generators
             }
         }
 
-        private StudentAvatarData BuildHumanoidAvatar(string name, string id, bool isAssessed, Vector3 pos, Quaternion rot, Color shirtCol, Color skinCol, Color hairCol, int index)
+        private StudentAvatarData BuildNormalHumanAvatar(string name, string id, bool isAssessed, Vector3 pos, Quaternion rot, Color shirtCol, Color skinCol, Color hairCol, int index)
         {
             GameObject root = new GameObject(name);
             root.transform.position = pos;
             root.transform.rotation = rot;
 
-            Material skinMat = MaterialHelper.CreateMaterial("SkinMat_" + index, skinCol, 0.0f, 0.6f);
-            Material shirtMat = MaterialHelper.CreateMaterial("ShirtMat_" + index, shirtCol, 0.1f, 0.4f);
-            Material hairMat = MaterialHelper.CreateMaterial("HairMat_" + index, hairCol, 0.05f, 0.3f);
-            Material pantsMat = MaterialHelper.CreateMaterial("PantsMat_" + index, new Color(0.15f, 0.2f, 0.28f), 0.1f, 0.4f);
-            Material eyeWhiteMat = MaterialHelper.CreateMaterial("EyeWhiteMat", Color.white, 0.1f, 0.9f);
-            Material irisMat = MaterialHelper.CreateMaterial("IrisMat_" + index, new Color(0.12f, 0.22f, 0.35f), 0.4f, 0.8f);
-            Material eyebrowMat = MaterialHelper.CreateMaterial("EyebrowMat_" + index, hairCol * 0.8f, 0.05f, 0.3f);
-            Material lipMat = MaterialHelper.CreateMaterial("LipMat_" + index, skinCol * 0.82f + new Color(0.12f, 0.02f, 0.04f), 0.1f, 0.5f);
+            Material skinMat = MaterialHelper.CreateMaterial("HumanSkinMat_" + index, skinCol, 0.0f, 0.55f);
+            Material shirtMat = MaterialHelper.CreateMaterial("ShirtMat_" + index, shirtCol, 0.1f, 0.45f);
+            Material hairMat = MaterialHelper.CreateMaterial("HairMat_" + index, hairCol, 0.08f, 0.35f);
+            Material pantsMat = MaterialHelper.CreateMaterial("PantsMat_" + index, new Color(0.14f, 0.18f, 0.25f), 0.1f, 0.4f);
+            Material eyeScleraMat = MaterialHelper.CreateMaterial("EyeScleraMat", new Color(0.96f, 0.96f, 0.98f), 0.2f, 0.9f);
+            Material irisMat = MaterialHelper.CreateMaterial("IrisMat_" + index, new Color(0.15f, 0.25f, 0.38f), 0.5f, 0.85f);
+            Material pupilMat = MaterialHelper.CreateMaterial("PupilMat", new Color(0.04f, 0.04f, 0.04f), 0.8f, 0.9f);
+            Material eyebrowMat = MaterialHelper.CreateMaterial("EyebrowMat_" + index, hairCol * 0.75f, 0.05f, 0.3f);
+            Material lipMat = MaterialHelper.CreateMaterial("LipMat_" + index, skinCol * 0.8f + new Color(0.15f, 0.03f, 0.05f), 0.1f, 0.55f);
 
-            // 1. Torso & Upper Body
-            GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            torso.name = "Torso";
-            torso.transform.SetParent(root.transform);
-            torso.transform.localPosition = new Vector3(0, 0.42f, 0);
-            torso.transform.localScale = new Vector3(0.38f, 0.34f, 0.26f);
-            torso.GetComponent<Renderer>().sharedMaterial = shirtMat;
+            // 1. Torso & Upper Body Structure
+            GameObject chest = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            chest.name = "ChestTorso";
+            chest.transform.SetParent(root.transform);
+            chest.transform.localPosition = new Vector3(0, 0.44f, 0);
+            chest.transform.localScale = new Vector3(0.36f, 0.32f, 0.24f);
+            chest.GetComponent<Renderer>().sharedMaterial = shirtMat;
 
-            // Hoodie Collar & Drawstrings
-            if (index == 0 || index == 2 || index == 3)
+            // Hoodie or Sweater Collar Details
+            if (index == 0 || index == 2 || index == 3) // Hoodies
             {
-                GameObject hood = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                hood.name = "HoodieCollar";
-                hood.transform.SetParent(torso.transform);
-                hood.transform.localPosition = new Vector3(0, 0.65f, -0.38f);
-                hood.transform.localScale = new Vector3(0.85f, 0.48f, 0.6f);
-                hood.GetComponent<Renderer>().sharedMaterial = shirtMat;
+                GameObject hoodBack = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                hoodBack.name = "HoodieBack";
+                hoodBack.transform.SetParent(chest.transform);
+                hoodBack.transform.localPosition = new Vector3(0, 0.62f, -0.36f);
+                hoodBack.transform.localScale = new Vector3(0.82f, 0.45f, 0.58f);
+                hoodBack.GetComponent<Renderer>().sharedMaterial = shirtMat;
 
                 // Drawstrings
                 for (int s = -1; s <= 1; s += 2)
                 {
                     GameObject stringObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                     stringObj.name = "Drawstring_" + s;
-                    stringObj.transform.SetParent(torso.transform);
-                    stringObj.transform.localPosition = new Vector3(s * 0.15f, 0.55f, 0.42f);
-                    stringObj.transform.localScale = new Vector3(0.04f, 0.2f, 0.04f);
+                    stringObj.transform.SetParent(chest.transform);
+                    stringObj.transform.localPosition = new Vector3(s * 0.16f, 0.52f, 0.42f);
+                    stringObj.transform.localScale = new Vector3(0.035f, 0.18f, 0.035f);
                     stringObj.GetComponent<Renderer>().sharedMaterial = MaterialHelper.CreateMaterial("StringMat", Color.white);
                 }
             }
-            else // Sweater Ribbed Collar
+            else // Ribbed Sweater Collar
             {
                 GameObject collar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 collar.name = "SweaterCollar";
-                collar.transform.SetParent(torso.transform);
+                collar.transform.SetParent(chest.transform);
                 collar.transform.localPosition = new Vector3(0, 0.82f, 0);
-                collar.transform.localScale = new Vector3(0.48f, 0.08f, 0.48f);
+                collar.transform.localScale = new Vector3(0.46f, 0.08f, 0.46f);
                 collar.GetComponent<Renderer>().sharedMaterial = shirtMat;
             }
 
-            // 2. Neck
+            // 2. Anatomical Neck & Collarbone
             GameObject neck = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             neck.name = "Neck";
             neck.transform.SetParent(root.transform);
-            neck.transform.localPosition = new Vector3(0, 0.73f, 0);
-            neck.transform.localScale = new Vector3(0.12f, 0.09f, 0.12f);
+            neck.transform.localPosition = new Vector3(0, 0.74f, 0);
+            neck.transform.localScale = new Vector3(0.11f, 0.09f, 0.11f);
             neck.GetComponent<Renderer>().sharedMaterial = skinMat;
 
-            // 3. Head & Facial Geometry
+            // 3. Human Head Geometry (Cranium + Jaw/Chin + Ears)
             GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             head.name = "Head";
             head.transform.SetParent(root.transform);
             head.transform.localPosition = new Vector3(0, 0.96f, 0);
-            head.transform.localScale = new Vector3(0.24f, 0.27f, 0.25f);
+            head.transform.localScale = new Vector3(0.22f, 0.26f, 0.23f);
             head.GetComponent<Renderer>().sharedMaterial = skinMat;
 
-            // Jaw & Chin Contour
-            GameObject chin = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            chin.name = "ChinJawContour";
+            // Chin & Jaw Contour
+            GameObject chin = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            chin.name = "ChinContour";
             chin.transform.SetParent(head.transform);
-            chin.transform.localPosition = new Vector3(0, -0.32f, 0.18f);
-            chin.transform.localRotation = Quaternion.Euler(15f, 0, 0);
-            chin.transform.localScale = new Vector3(0.48f, 0.32f, 0.42f);
+            chin.transform.localPosition = new Vector3(0, -0.32f, 0.16f);
+            chin.transform.localScale = new Vector3(0.44f, 0.32f, 0.42f);
             chin.GetComponent<Renderer>().sharedMaterial = skinMat;
 
-            // 3D Nose Bridge & Tip
+            // Human Ears (Left & Right)
+            for (int eSide = -1; eSide <= 1; eSide += 2)
+            {
+                GameObject ear = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                ear.name = "Ear_" + eSide;
+                ear.transform.SetParent(head.transform);
+                ear.transform.localPosition = new Vector3(eSide * 0.48f, 0.02f, -0.05f);
+                ear.transform.localRotation = Quaternion.Euler(15f, 0, eSide * 20f);
+                ear.transform.localScale = new Vector3(0.08f, 0.16f, 0.12f);
+                ear.GetComponent<Renderer>().sharedMaterial = skinMat;
+            }
+
+            // Human Nose Bridge & Tip
             GameObject nose = GameObject.CreatePrimitive(PrimitiveType.Cube);
             nose.name = "NoseBridge";
             nose.transform.SetParent(head.transform);
-            nose.transform.localPosition = new Vector3(0, 0.02f, 0.48f);
-            nose.transform.localRotation = Quaternion.Euler(-20f, 0, 0);
-            nose.transform.localScale = new Vector3(0.12f, 0.22f, 0.14f);
+            nose.transform.localPosition = new Vector3(0, 0.02f, 0.46f);
+            nose.transform.localRotation = Quaternion.Euler(-18f, 0, 0);
+            nose.transform.localScale = new Vector3(0.11f, 0.2f, 0.12f);
             nose.GetComponent<Renderer>().sharedMaterial = skinMat;
 
-            // Mouth & Lips
+            // Human Mouth & Lips
             GameObject mouthObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
             mouthObj.name = "Mouth";
             mouthObj.transform.SetParent(head.transform);
-            mouthObj.transform.localPosition = new Vector3(0, -0.25f, 0.46f);
-            mouthObj.transform.localScale = new Vector3(0.35f, 0.08f, 0.08f);
+            mouthObj.transform.localPosition = new Vector3(0, -0.24f, 0.45f);
+            mouthObj.transform.localScale = new Vector3(0.32f, 0.07f, 0.07f);
             mouthObj.GetComponent<Renderer>().sharedMaterial = lipMat;
 
-            // Detailed Eyes (White Sockets, Irises, Pupils)
+            // Anatomical Eyes (White Sclera, Colored Iris, Black Pupil)
             Transform leftEyelidTr = null;
             Transform rightEyelidTr = null;
 
@@ -186,22 +199,29 @@ namespace MentalHealthApp.Generators
                 GameObject eyeSocket = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 eyeSocket.name = "EyeSocket_" + eyeSide;
                 eyeSocket.transform.SetParent(head.transform);
-                eyeSocket.transform.localPosition = new Vector3(eyeSide * 0.24f, 0.12f, 0.43f);
-                eyeSocket.transform.localScale = new Vector3(0.15f, 0.13f, 0.12f);
-                eyeSocket.GetComponent<Renderer>().sharedMaterial = eyeWhiteMat;
+                eyeSocket.transform.localPosition = new Vector3(eyeSide * 0.23f, 0.11f, 0.42f);
+                eyeSocket.transform.localScale = new Vector3(0.14f, 0.12f, 0.11f);
+                eyeSocket.GetComponent<Renderer>().sharedMaterial = eyeScleraMat;
 
                 GameObject iris = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 iris.name = "Iris_" + eyeSide;
                 iris.transform.SetParent(eyeSocket.transform);
                 iris.transform.localPosition = new Vector3(0, 0, 0.42f);
-                iris.transform.localScale = new Vector3(0.6f, 0.6f, 0.3f);
+                iris.transform.localScale = new Vector3(0.58f, 0.58f, 0.25f);
                 iris.GetComponent<Renderer>().sharedMaterial = irisMat;
+
+                GameObject pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                pupil.name = "Pupil_" + eyeSide;
+                pupil.transform.SetParent(iris.transform);
+                pupil.transform.localPosition = new Vector3(0, 0, 0.45f);
+                pupil.transform.localScale = new Vector3(0.5f, 0.5f, 0.3f);
+                pupil.GetComponent<Renderer>().sharedMaterial = pupilMat;
 
                 // Eyelids for blinking
                 GameObject eyelid = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 eyelid.name = "Eyelid_" + eyeSide;
                 eyelid.transform.SetParent(eyeSocket.transform);
-                eyelid.transform.localPosition = new Vector3(0, 0.1f, 0.45f);
+                eyelid.transform.localPosition = new Vector3(0, 0.08f, 0.48f);
                 eyelid.transform.localScale = new Vector3(1.1f, 1.1f, 0.2f);
                 eyelid.GetComponent<Renderer>().sharedMaterial = skinMat;
                 eyelid.SetActive(false);
@@ -210,21 +230,21 @@ namespace MentalHealthApp.Generators
                 else rightEyelidTr = eyelid.transform;
             }
 
-            // 3D Eyebrows (Left & Right)
+            // Human 3D Eyebrows
             GameObject leftEyebrowObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
             leftEyebrowObj.name = "LeftEyebrow";
             leftEyebrowObj.transform.SetParent(head.transform);
-            leftEyebrowObj.transform.localPosition = new Vector3(-0.24f, 0.28f, 0.44f);
+            leftEyebrowObj.transform.localPosition = new Vector3(-0.23f, 0.26f, 0.43f);
             leftEyebrowObj.transform.localRotation = Quaternion.Euler(0, 0, -5f);
-            leftEyebrowObj.transform.localScale = new Vector3(0.24f, 0.045f, 0.06f);
+            leftEyebrowObj.transform.localScale = new Vector3(0.22f, 0.04f, 0.05f);
             leftEyebrowObj.GetComponent<Renderer>().sharedMaterial = eyebrowMat;
 
             GameObject rightEyebrowObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
             rightEyebrowObj.name = "RightEyebrow";
             rightEyebrowObj.transform.SetParent(head.transform);
-            rightEyebrowObj.transform.localPosition = new Vector3(0.24f, 0.28f, 0.44f);
+            rightEyebrowObj.transform.localPosition = new Vector3(0.23f, 0.26f, 0.43f);
             rightEyebrowObj.transform.localRotation = Quaternion.Euler(0, 0, 5f);
-            rightEyebrowObj.transform.localScale = new Vector3(0.24f, 0.045f, 0.06f);
+            rightEyebrowObj.transform.localScale = new Vector3(0.22f, 0.04f, 0.05f);
             rightEyebrowObj.GetComponent<Renderer>().sharedMaterial = eyebrowMat;
 
             // Glasses for Seat 3 (Arjun)
@@ -233,29 +253,29 @@ namespace MentalHealthApp.Generators
                 GameObject glasses = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 glasses.name = "GlassesFrame";
                 glasses.transform.SetParent(head.transform);
-                glasses.transform.localPosition = new Vector3(0, 0.12f, 0.48f);
-                glasses.transform.localScale = new Vector3(0.85f, 0.24f, 0.06f);
+                glasses.transform.localPosition = new Vector3(0, 0.11f, 0.47f);
+                glasses.transform.localScale = new Vector3(0.82f, 0.22f, 0.05f);
                 glasses.GetComponent<Renderer>().sharedMaterial = MaterialHelper.CreateMaterial("GlassesMat", new Color(0.1f, 0.1f, 0.12f), 0.8f, 0.8f);
             }
 
-            // Hair Styles
+            // Hairstyles
             GameObject hair = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             hair.name = "Hair";
             hair.transform.SetParent(head.transform);
 
-            if (index == 0 || index == 4) // Long layered hair (Maya & Priya)
+            if (index == 0 || index == 4) // Maya & Priya - Long layered hair
             {
                 hair.transform.localPosition = new Vector3(0, 0.22f, -0.05f);
-                hair.transform.localScale = new Vector3(1.12f, 0.85f, 1.25f);
+                hair.transform.localScale = new Vector3(1.12f, 0.85f, 1.22f);
 
                 GameObject longHairBack = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 longHairBack.name = "LongHairBack";
                 longHairBack.transform.SetParent(head.transform);
-                longHairBack.transform.localPosition = new Vector3(0, -0.3f, -0.4f);
-                longHairBack.transform.localScale = new Vector3(1.05f, 0.65f, 0.55f);
+                longHairBack.transform.localPosition = new Vector3(0, -0.3f, -0.38f);
+                longHairBack.transform.localScale = new Vector3(1.05f, 0.65f, 0.52f);
                 longHairBack.GetComponent<Renderer>().sharedMaterial = hairMat;
             }
-            else if (index == 1) // Hair bun (Alex)
+            else if (index == 1) // Alex - Top Bun
             {
                 hair.transform.localPosition = new Vector3(0, 0.22f, -0.05f);
                 hair.transform.localScale = new Vector3(1.08f, 0.6f, 1.08f);
@@ -263,45 +283,57 @@ namespace MentalHealthApp.Generators
                 GameObject bun = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 bun.name = "HairBun";
                 bun.transform.SetParent(head.transform);
-                bun.transform.localPosition = new Vector3(0, 0.58f, -0.35f);
-                bun.transform.localScale = new Vector3(0.48f, 0.48f, 0.48f);
+                bun.transform.localPosition = new Vector3(0, 0.56f, -0.32f);
+                bun.transform.localScale = new Vector3(0.46f, 0.46f, 0.46f);
                 bun.GetComponent<Renderer>().sharedMaterial = hairMat;
             }
-            else // Short male hair
+            else // Karan & Arjun - Short layered male hair
             {
                 hair.transform.localPosition = new Vector3(0, 0.24f, -0.05f);
-                hair.transform.localScale = new Vector3(1.08f, 0.62f, 1.08f);
+                hair.transform.localScale = new Vector3(1.06f, 0.6f, 1.06f);
             }
             hair.GetComponent<Renderer>().sharedMaterial = hairMat;
 
-            // 4. Arms & Hands resting naturally on table
+            // 4. Arms & Hands with 5 Individual Fingers
             for (int side = -1; side <= 1; side += 2)
             {
                 GameObject upperArm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 upperArm.name = "UpperArm_" + side;
                 upperArm.transform.SetParent(root.transform);
-                upperArm.transform.localPosition = new Vector3(side * 0.23f, 0.45f, 0.05f);
+                upperArm.transform.localPosition = new Vector3(side * 0.22f, 0.45f, 0.05f);
                 upperArm.transform.localRotation = Quaternion.Euler(25f, 0, side * 15f);
-                upperArm.transform.localScale = new Vector3(0.085f, 0.18f, 0.085f);
+                upperArm.transform.localScale = new Vector3(0.08f, 0.18f, 0.08f);
                 upperArm.GetComponent<Renderer>().sharedMaterial = shirtMat;
 
                 GameObject forearm = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 forearm.name = "Forearm_" + side;
                 forearm.transform.SetParent(root.transform);
-                forearm.transform.localPosition = new Vector3(side * 0.2f, 0.28f, 0.28f);
+                forearm.transform.localPosition = new Vector3(side * 0.19f, 0.28f, 0.28f);
                 forearm.transform.localRotation = Quaternion.Euler(75f, side * -10f, 0);
-                forearm.transform.localScale = new Vector3(0.08f, 0.16f, 0.08f);
+                forearm.transform.localScale = new Vector3(0.075f, 0.16f, 0.075f);
                 forearm.GetComponent<Renderer>().sharedMaterial = skinMat;
 
-                GameObject hand = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                hand.name = "Hand_" + side;
-                hand.transform.SetParent(root.transform);
-                hand.transform.localPosition = new Vector3(side * 0.18f, 0.26f, 0.42f);
-                hand.transform.localScale = new Vector3(0.08f, 0.05f, 0.1f);
-                hand.GetComponent<Renderer>().sharedMaterial = skinMat;
+                // Palm
+                GameObject palm = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                palm.name = "Palm_" + side;
+                palm.transform.SetParent(root.transform);
+                palm.transform.localPosition = new Vector3(side * 0.18f, 0.26f, 0.42f);
+                palm.transform.localScale = new Vector3(0.075f, 0.025f, 0.09f);
+                palm.GetComponent<Renderer>().sharedMaterial = skinMat;
+
+                // 5 Individual Fingers
+                for (int f = -2; f <= 2; f++)
+                {
+                    GameObject finger = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                    finger.name = "Finger_" + side + "_" + f;
+                    finger.transform.SetParent(palm.transform);
+                    finger.transform.localPosition = new Vector3(f * 0.22f, 0, 0.55f);
+                    finger.transform.localScale = new Vector3(0.18f, 0.28f, 0.18f);
+                    finger.GetComponent<Renderer>().sharedMaterial = skinMat;
+                }
             }
 
-            // 5. Speech Bubble UI
+            // 5. Speech Bubble UI (Hidden overhead by default)
             GameObject speechBubbleObj = new GameObject("SpeechBubble");
             speechBubbleObj.transform.SetParent(root.transform);
             speechBubbleObj.transform.localPosition = new Vector3(0, 1.45f, 0);
