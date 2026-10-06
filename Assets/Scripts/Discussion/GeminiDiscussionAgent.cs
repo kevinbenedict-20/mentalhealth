@@ -202,7 +202,8 @@ namespace MentalHealthApp.Discussion
                 yield break;
             }
 
-            string url = string.Format("https://generativelanguage.googleapis.com/v1beta/models/{0}:generateContent?key={1}", modelName, apiKey);
+            string cleanKey = apiKey.Trim();
+            string url = string.Format("https://generativelanguage.googleapis.com/v1beta/models/{0}:generateContent?key={1}", modelName, cleanKey);
             string jsonPayload = "{\"contents\":[{\"parts\":[{\"text\":\"" + EscapeJsonString(prompt) + "\"}]}],\"generationConfig\":{\"temperature\":0.95,\"topP\":0.95}}";
 
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
@@ -242,7 +243,45 @@ namespace MentalHealthApp.Discussion
                     Debug.LogWarning("Gemini API WebRequest failed (" + request.responseCode + "): " + request.error + " | Response: " + request.downloadHandler.text);
                 }
 
-                // Fallback on error
+                // Try gemini-2.0-flash fallback model
+                yield return SendGeminiFallbackModelRequest(prompt, cleanKey, onResult);
+            }
+        }
+
+        private IEnumerator SendGeminiFallbackModelRequest(string prompt, string key, Action<string> onResult)
+        {
+            string url = string.Format("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={0}", key);
+            string jsonPayload = "{\"contents\":[{\"parts\":[{\"text\":\"" + EscapeJsonString(prompt) + "\"}]}],\"generationConfig\":{\"temperature\":0.95,\"topP\":0.95}}";
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
+
+            using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
+            {
+                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        string responseJson = request.downloadHandler.text;
+                        GeminiResponseData parsed = JsonUtility.FromJson<GeminiResponseData>(responseJson);
+                        if (parsed != null && parsed.candidates != null && parsed.candidates.Length > 0 && parsed.candidates[0].content.parts.Length > 0)
+                        {
+                            string aiText = parsed.candidates[0].content.parts[0].text.Trim();
+                            if (!string.IsNullOrEmpty(aiText))
+                            {
+                                Debug.Log("[Gemini 2.0 Fallback Success]: " + aiText);
+                                onResult?.Invoke(aiText);
+                                yield break;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
                 onResult?.Invoke(GetUniqueFallbackStatement());
             }
         }

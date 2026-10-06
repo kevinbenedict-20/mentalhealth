@@ -106,7 +106,7 @@ namespace MentalHealthApp.Discussion
 
             if (string.IsNullOrEmpty(geminiAgent.apiKey))
             {
-                geminiAgent.apiKey = string.Empty;
+                geminiAgent.LoadSecureAPIKey();
             }
 
             EnsureVRController();
