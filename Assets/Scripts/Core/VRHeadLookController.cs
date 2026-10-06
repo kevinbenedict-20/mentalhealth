@@ -42,12 +42,29 @@ namespace MentalHealthApp.Core
                 }
             }
 
-            // Safe cross-input system mouse reading without throwing InvalidOperationException
-            bool mousePressed = false;
-            bool mouseReleased = false;
-            Vector3 mousePos = Vector3.zero;
+            // 2. Keyboard & Mouse Rotation Controls for Desktop Mode
+            float keyYawDelta = 0f;
+            float keyPitchDelta = 0f;
 
-            GetCrossSystemMouseInput(out mousePressed, out mouseReleased, out mousePos);
+            // Check New Input System Keyboard via Reflection safely
+            Type keyboardType = Type.GetType("UnityEngine.InputSystem.Keyboard, Unity.InputSystem");
+            if (keyboardType != null)
+            {
+                PropertyInfo currentKBProp = keyboardType.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
+                object currentKB = currentKBProp?.GetValue(null);
+                if (currentKB != null)
+                {
+                    PropertyInfo leftKey = keyboardType.GetProperty("leftArrowKey") ?? keyboardType.GetProperty("aKey");
+                    PropertyInfo rightKey = keyboardType.GetProperty("rightArrowKey") ?? keyboardType.GetProperty("dKey");
+                    PropertyInfo upKey = keyboardType.GetProperty("upArrowKey") ?? keyboardType.GetProperty("wKey");
+                    PropertyInfo downKey = keyboardType.GetProperty("downArrowKey") ?? keyboardType.GetProperty("sKey");
+
+                    if (IsKeyPressed(currentKB, leftKey) || IsKeyPressed(currentKB, keyboardType.GetProperty("aKey"))) keyYawDelta -= 60f * Time.deltaTime;
+                    if (IsKeyPressed(currentKB, rightKey) || IsKeyPressed(currentKB, keyboardType.GetProperty("dKey"))) keyYawDelta += 60f * Time.deltaTime;
+                    if (IsKeyPressed(currentKB, upKey) || IsKeyPressed(currentKB, keyboardType.GetProperty("wKey"))) keyPitchDelta -= 40f * Time.deltaTime;
+                    if (IsKeyPressed(currentKB, downKey) || IsKeyPressed(currentKB, keyboardType.GetProperty("sKey"))) keyPitchDelta += 40f * Time.deltaTime;
+                }
+            }
 
             if (mousePressed)
             {
@@ -59,17 +76,35 @@ namespace MentalHealthApp.Core
                 isDragging = false;
             }
 
-            if (isDragging && isFirstPersonPOV)
+            if (isFirstPersonPOV)
             {
-                Vector3 delta = mousePos - lastMousePosition;
-                lastMousePosition = mousePos;
+                if (isDragging)
+                {
+                    Vector3 delta = mousePos - lastMousePosition;
+                    lastMousePosition = mousePos;
 
-                currentYaw += delta.x * mouseSensitivity * 0.1f;
-                currentPitch -= delta.y * mouseSensitivity * 0.1f;
+                    currentYaw += delta.x * mouseSensitivity * 0.1f;
+                    currentPitch -= delta.y * mouseSensitivity * 0.1f;
+                }
+
+                currentYaw += keyYawDelta;
+                currentPitch += keyPitchDelta;
                 currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
 
                 transform.rotation = Quaternion.Euler(currentPitch, currentYaw, 0);
             }
+        }
+
+        private bool IsKeyPressed(object kb, PropertyInfo keyProp)
+        {
+            if (kb == null || keyProp == null) return false;
+            object keyControl = keyProp.GetValue(kb);
+            if (keyControl != null)
+            {
+                PropertyInfo isPressedProp = keyControl.GetType().GetProperty("isPressed");
+                if (isPressedProp != null) return (bool)isPressedProp.GetValue(keyControl);
+            }
+            return false;
         }
 
         private void GetCrossSystemMouseInput(out bool mousePressed, out bool mouseReleased, out Vector3 mousePos)
