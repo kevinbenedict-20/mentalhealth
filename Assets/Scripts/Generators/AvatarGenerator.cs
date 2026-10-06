@@ -428,6 +428,13 @@ namespace MentalHealthApp.Generators
             exprCtrl.leftEyelid = leftEyelidTr;
             exprCtrl.rightEyelid = rightEyelidTr;
 
+            // 7. Attach Real-Time Hand Movement IK Controller for Kevin (Seat 1)
+            if (isAssessed)
+            {
+                MentalHealthApp.Tracking.AvatarHandIKController handIK = root.AddComponent<MentalHealthApp.Tracking.AvatarHandIKController>();
+                handIK.FindHandsIfNull();
+            }
+
             return new StudentAvatarData
             {
                 studentName = name,
