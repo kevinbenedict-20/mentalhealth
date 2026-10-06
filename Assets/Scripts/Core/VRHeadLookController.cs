@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.XR;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -35,6 +36,12 @@ namespace MentalHealthApp.Core
         private Vector3 target6DoFPosOffset = Vector3.zero;
         private Vector3 current6DoFPosOffset = Vector3.zero;
 
+        private void Awake()
+        {
+            // Auto-enable XR & OpenXR / Oculus Display Subsystems on Play
+            AutoInitializeXRHeadset();
+        }
+
         private void Start()
         {
             Vector3 angles = transform.eulerAngles;
@@ -44,6 +51,37 @@ namespace MentalHealthApp.Core
             SetupSpatialAudio();
         }
 
+        private void AutoInitializeXRHeadset()
+        {
+            try
+            {
+                XRSettings.enabled = true;
+
+                // Safely invoke XRGeneralSettings.Instance.Manager.StartSubsystems() via Reflection
+                Type xrGeneralType = Type.GetType("UnityEngine.XR.Management.XRGeneralSettings, Unity.XR.Management");
+                if (xrGeneralType != null)
+                {
+                    PropertyInfo instanceProp = xrGeneralType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+                    object instance = instanceProp?.GetValue(null);
+                    if (instance != null)
+                    {
+                        PropertyInfo managerProp = instance.GetType().GetProperty("Manager");
+                        object manager = managerProp?.GetValue(instance);
+                        if (manager != null)
+                        {
+                            MethodInfo startSubsystemsMethod = manager.GetType().GetMethod("StartSubsystems");
+                            startSubsystemsMethod?.Invoke(manager, null);
+                            Debug.Log("[VRXR] XR Subsystems started for Meta Quest headset display.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[VRXR] XR Auto-initialization note: " + ex.Message);
+            }
+        }
+
         private void SetupSpatialAudio()
         {
             spatialAudioSource = GetComponent<AudioSource>();
@@ -51,7 +89,7 @@ namespace MentalHealthApp.Core
             {
                 spatialAudioSource = gameObject.AddComponent<AudioSource>();
             }
-            spatialAudioSource.spatialBlend = 1.0f; // 100% 3D Spatial Audio for VR headsets
+            spatialAudioSource.spatialBlend = 1.0f;
             spatialAudioSource.rolloffMode = AudioRolloffMode.Logarithmic;
             spatialAudioSource.minDistance = 0.5f;
             spatialAudioSource.maxDistance = 15f;
@@ -63,7 +101,6 @@ namespace MentalHealthApp.Core
         {
             if (!enable3DSpatialAudio || spatialAudioSource == null) return;
             
-            // Create a temporary spatial sound point at the speaking avatar's head position
             GameObject tempAudioObj = new GameObject("VR_SpatialAudio_Point");
             tempAudioObj.transform.position = avatarHeadPosition;
             AudioSource src = tempAudioObj.AddComponent<AudioSource>();
@@ -73,7 +110,6 @@ namespace MentalHealthApp.Core
             src.rolloffMode = AudioRolloffMode.Logarithmic;
             src.dopplerLevel = 0f;
 
-            // Generate a subtle 3D spatial attention ping
             AudioClip pingClip = CreateSpatialPingClip();
             src.clip = pingClip;
             src.volume = 0.35f;
@@ -86,7 +122,7 @@ namespace MentalHealthApp.Core
             int sampleRate = 44100;
             int length = (int)(sampleRate * 0.15f);
             float[] samples = new float[length];
-            float freq = 587.33f; // D5 tone for gentle spatial alert
+            float freq = 587.33f;
 
             for (int i = 0; i < length; i++)
             {
@@ -102,7 +138,6 @@ namespace MentalHealthApp.Core
 
         private void Update()
         {
-            // 1. Meta Quest 3 Native 6DoF Headset Tracking
             bool isVRHeadsetTracked = false;
             if (XRSettings.isDeviceActive && XRSettings.enabled)
             {
@@ -131,12 +166,10 @@ namespace MentalHealthApp.Core
                 }
             }
 
-            // 2. Meta Quest 3 Touch Controller & Trigger Selection Raycast
             CheckQuestControllerInput();
 
             if (isVRHeadsetTracked) return;
 
-            // 3. Desktop / Mouse & Keyboard Fallback Controls
             float keyYawDelta = 0f;
             float keyPitchDelta = 0f;
 
@@ -199,7 +232,6 @@ namespace MentalHealthApp.Core
         {
             if (!enableQuestControllerRay) return;
 
-            // Check Right & Left Quest Touch Controllers
             InputDevice rightHand = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
             InputDevice leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
 
@@ -207,7 +239,6 @@ namespace MentalHealthApp.Core
             if (rightHand.isValid && rightHand.TryGetFeatureValue(CommonUsages.triggerButton, out bool rightTrig) && rightTrig) triggerPressed = true;
             if (leftHand.isValid && leftHand.TryGetFeatureValue(CommonUsages.triggerButton, out bool leftTrig) && leftTrig) triggerPressed = true;
 
-            // Perform Gaze / Quest Pointer Raycast from VR Head Camera
             if (triggerPressed || Input.GetMouseButtonDown(0))
             {
                 Ray ray = new Ray(transform.position, transform.forward);

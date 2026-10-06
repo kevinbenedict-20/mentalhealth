@@ -82,6 +82,15 @@ namespace MentalHealthApp.Discussion
         public MentalHealthApp.Tracking.RealtimeVRTrackingManager trackingManager;
         public GDQuestionHistory questionHistory;
 
+        private void Start()
+        {
+            // Auto-start VR discussion session on Play
+            if (currentPhase == DiscussionPhase.PreSession)
+            {
+                StartSession();
+            }
+        }
+
         public void StartSession()
         {
             if (geminiAgent == null)
