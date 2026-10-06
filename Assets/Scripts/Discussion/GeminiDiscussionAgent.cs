@@ -99,45 +99,8 @@ namespace MentalHealthApp.Discussion
 
         private HashSet<string> askedQuestionsHistory = new HashSet<string>();
         private List<string> fullConversationHistory = new List<string>();
-        private int fallbackIndex = 0;
         private string discoveredModelName = null;
         private bool isDiscoveringModel = false;
-
-        private string[] nonRepeatingPeerPool = new string[]
-        {
-            "How do you usually recognize when study stress is starting to affect your daily routine?",
-            "What strategies have you found most helpful for staying focused during heavy exam weeks?",
-            "How do you handle situations when team members have conflicting priorities in a group project?",
-            "What is one healthy boundary you set to protect your personal time after classes?",
-            "How do you encourage quiet team members to share their ideas without feeling put on the spot?",
-            "When academic pressure mounts, who or what is your primary source of support?",
-            "What small daily habit helps you reset your mind after a long day of lectures?",
-            "I've realized that taking 10-minute walk breaks between study blocks keeps my mind surprisingly clear.",
-            "Setting up clear communication channels early in team projects prevents so much last-minute anxiety.",
-            "I find that speaking up about workload stress with peers helps me realize I'm not alone in feeling overwhelmed.",
-            "Prioritizing consistent sleep hygiene completely changed how I handle exam week pressure.",
-            "Learning to say no to extra non-essential commitments gives me space to recharge mentally.",
-            "Active listening and validating each other's ideas makes group discussions feel like a safe haven.",
-            "What is a personal stress indicator that tells you it's time to take a mental break?",
-            "How do you stay motivated when an assignment feels completely intimidating or tedious?",
-            "Have you ever tried time-blocking your day, and did it help reduce your evening study stress?",
-            "What's your go-to strategy when you feel like you're falling behind on group project deliverables?",
-            "I've started turning off my notifications during study sessions, and my focus level doubled almost immediately.",
-            "When deadlines overlap, I rank tasks by urgency rather than trying to finish everything at once.",
-            "Building a supportive peer study circle makes preparing for tough exams feel less isolating.",
-            "What advice would you give to a freshman struggling to balance campus social life and coursework?",
-            "How do you check in on a classmate who seems quiet or overwhelmed during group meetings?",
-            "I find that breaking long assignments into 25-minute sprints helps me overcome initial procrastination.",
-            "Taking time out for hobbies without feeling guilty is essential for preventing long-term burnout.",
-            "What is one communication habit that has helped your project teams run smoothly without friction?",
-            "How do you restore your energy when you feel mentally exhausted after a long lab or lecture series?",
-            "Normalizing honest conversations about academic pressure helps everyone feel more supported.",
-            "What personal boundary has had the biggest positive impact on your mental well-being this semester?",
-            "How do you handle constructive criticism from peers without taking it personally?",
-            "Creating a calm study environment free of clutter makes a surprisingly big difference in my focus.",
-            "What is a positive habit you built this year that you wish you had started earlier in college?",
-            "How do you reset your mindset after experiencing an unexpected setback on a test or project?"
-        };
 
         private void Awake()
         {
@@ -291,7 +254,6 @@ namespace MentalHealthApp.Discussion
                     string cleanName = SanitizeModelName(m.name);
                     generateCandidates.Add(cleanName);
 
-                    // Prefer fast, low-latency Flash models for conversational GD
                     if (cleanName.Contains("3.5-flash") || cleanName.Contains("3.8-flash") || cleanName.Contains("3.1-flash-lite") || cleanName.Contains("2.5-flash-lite") || cleanName.Contains("flash-latest") || cleanName.Contains("flash"))
                     {
                         flashCandidates.Add(cleanName);
@@ -299,7 +261,6 @@ namespace MentalHealthApp.Discussion
                 }
             }
 
-            // Prioritize specific high-quality Flash models
             string[] preferredOrder = new string[]
             {
                 "gemini-3.5-flash",
@@ -342,31 +303,51 @@ namespace MentalHealthApp.Discussion
             UpdateDialogueHistory(recentDialogueHistory);
 
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
-            string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
+            int attempt = 0;
+            string generatedStatement = string.Empty;
+            bool statementAccepted = false;
 
-            string systemPrompt = string.Format(
-                "System Context:\n" +
-                "You are participating in an interactive, dynamic college student mental health group discussion.\n" +
-                "Random Seed: {0}. Your name is '{1}' and your persona is: '{2}'.\n" +
-                "Current Discussion Topic: '{3}'.\n" +
-                "Recent Dialogue History:\n{4}\n\n" +
-                "CRITICAL INSTRUCTION: Generate a completely unique, empathetic 1-2 sentence peer statement or personal insight on the topic.\n" +
-                "Express a distinct perspective matching your persona. DO NOT repeat any previous ideas or phrasing.",
-                uniqueSeed, peerName, peerPersona, topic, historyContext
-            );
-
-            yield return SendGeminiRequest(systemPrompt, (res) =>
+            while (attempt < 3 && !statementAccepted)
             {
-                string cleaned = CleanResponse(res);
-                if (string.IsNullOrEmpty(cleaned) || askedQuestionsHistory.Contains(cleaned) || (questionHistory != null && questionHistory.IsDuplicateOrSimilar(cleaned)))
+                attempt++;
+                string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
+
+                string variationInstruction = (attempt == 1)
+                    ? "Generate a completely unique, highly creative, empathetic 1-2 sentence peer statement or personal insight on the topic."
+                    : (attempt == 2)
+                        ? "IMPORTANT: Provide a FRESH, alternative angle focusing on personal boundaries, daily habits, or stress management."
+                        : "IMPORTANT: Focus on supportive peer communication, active listening, or workload prioritization.";
+
+                string systemPrompt = string.Format(
+                    "System Context:\n" +
+                    "You are participating in an interactive college student mental health group discussion.\n" +
+                    "Random Seed: {0}. Your name is '{1}' and your distinct personality is: '{2}'.\n" +
+                    "Current Discussion Topic: '{3}'.\n" +
+                    "Recent Dialogue History:\n{4}\n\n" +
+                    "CRITICAL INSTRUCTION: {5} Express a distinct perspective matching your persona. DO NOT repeat previous phrases.",
+                    uniqueSeed, peerName, peerPersona, topic, historyContext, variationInstruction
+                );
+
+                yield return SendGeminiRequest(systemPrompt, (res) =>
                 {
-                    cleaned = GetUniqueFallbackStatement();
-                }
-                askedQuestionsHistory.Add(cleaned);
-                if (questionHistory != null) questionHistory.AddStatement(cleaned);
-                fullConversationHistory.Add(peerName + ": " + cleaned);
-                onStatementReceived?.Invoke(cleaned);
-            });
+                    string cleaned = CleanResponse(res);
+                    if (!string.IsNullOrEmpty(cleaned) && !askedQuestionsHistory.Contains(cleaned) && (questionHistory == null || !questionHistory.IsDuplicateOrSimilar(cleaned)))
+                    {
+                        generatedStatement = cleaned;
+                        statementAccepted = true;
+                    }
+                });
+            }
+
+            if (!statementAccepted || string.IsNullOrEmpty(generatedStatement))
+            {
+                generatedStatement = GetUniqueDynamicFallbackStatement(topic, peerPersona);
+            }
+
+            askedQuestionsHistory.Add(generatedStatement);
+            if (questionHistory != null) questionHistory.AddStatement(generatedStatement);
+            fullConversationHistory.Add(peerName + ": " + generatedStatement);
+            onStatementReceived?.Invoke(generatedStatement);
         }
 
         public IEnumerator GeneratePeerQuestion(string peerName, string peerPersona, string topic, List<string> recentDialogueHistory, Action<string> onQuestionReceived)
@@ -379,14 +360,16 @@ namespace MentalHealthApp.Discussion
             string generatedQuestion = string.Empty;
             bool questionAccepted = false;
 
-            while (attempt < 2 && !questionAccepted)
+            while (attempt < 3 && !questionAccepted)
             {
                 attempt++;
                 string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
 
                 string attemptInstruction = (attempt == 1)
-                    ? "Ask a fresh, open-ended 1-sentence question for the group and Kevin to reflect on. Make it thoughtful, authentic, and unique."
-                    : "IMPORTANT: The previous question attempt was too similar to an existing question. Ask a COMPLETELY DIFFERENT question focusing on practical consequences or alternative solutions.";
+                    ? "Ask a fresh, intuitive, open-ended 1-sentence question for the group and Kevin to reflect on. Make it thoughtful, authentic, and unique."
+                    : (attempt == 2)
+                        ? "IMPORTANT: Ask a COMPLETELY DIFFERENT question focusing on practical consequences or team collaboration."
+                        : "IMPORTANT: Ask an open question regarding personal wellness boundaries or stress reset habits.";
 
                 string systemPrompt = string.Format(
                     "System Context:\n" +
@@ -411,8 +394,7 @@ namespace MentalHealthApp.Discussion
 
             if (!questionAccepted || string.IsNullOrEmpty(generatedQuestion))
             {
-                Debug.Log("[Gemini] Duplicate question detected or API empty. Using unique non-repeating question.");
-                generatedQuestion = GetUniqueFallbackStatement();
+                generatedQuestion = GetUniqueDynamicFallbackStatement(topic, peerPersona);
             }
 
             askedQuestionsHistory.Add(generatedQuestion);
@@ -424,29 +406,44 @@ namespace MentalHealthApp.Discussion
         public IEnumerator GeneratePeerResponse(string peerName, string peerPersona, string topic, string studentInput, Action<string> onResponseReceived)
         {
             if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
-            string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
+            int attempt = 0;
+            string generatedResponse = string.Empty;
+            bool responseAccepted = false;
 
-            string systemPrompt = string.Format(
-                "System Context:\n" +
-                "You are participating in a supportive college group discussion on student mental health.\n" +
-                "Random Seed: {0}. Your name is '{1}' and your persona is: '{2}'.\n" +
-                "Topic: '{3}'. The assessed student (Kevin) just shared: \"{4}\".\n\n" +
-                "CRITICAL INSTRUCTION: Respond directly to Kevin's statement with an empathetic, thoughtful 2-sentence feedback or follow-up reflection.\n" +
-                "Acknowledge Kevin's specific point and build upon it naturally. You may agree, respectfully challenge, or ask a contextual follow-up.",
-                uniqueSeed, peerName, peerPersona, topic, studentInput
-            );
-
-            yield return SendGeminiRequest(systemPrompt, (res) =>
+            while (attempt < 2 && !responseAccepted)
             {
-                string cleaned = CleanResponse(res);
-                if (string.IsNullOrEmpty(cleaned) || (questionHistory != null && questionHistory.IsDuplicateOrSimilar(cleaned)))
+                attempt++;
+                string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
+
+                string systemPrompt = string.Format(
+                    "System Context:\n" +
+                    "You are participating in a supportive college group discussion on student mental health.\n" +
+                    "Random Seed: {0}. Your name is '{1}' and your persona is: '{2}'.\n" +
+                    "Topic: '{3}'. The assessed student (Kevin) just shared: \"{4}\".\n\n" +
+                    "CRITICAL INSTRUCTION: Respond directly to Kevin's statement with an empathetic, thoughtful 2-sentence feedback or follow-up reflection.\n" +
+                    "Acknowledge Kevin's specific point and build upon it naturally. You may agree, respectfully challenge, or ask a contextual follow-up.",
+                    uniqueSeed, peerName, peerPersona, topic, studentInput
+                );
+
+                yield return SendGeminiRequest(systemPrompt, (res) =>
                 {
-                    cleaned = GetUniqueFallbackStatement();
-                }
-                if (questionHistory != null) questionHistory.AddStatement(cleaned);
-                fullConversationHistory.Add(peerName + ": " + cleaned);
-                onResponseReceived?.Invoke(cleaned);
-            });
+                    string cleaned = CleanResponse(res);
+                    if (!string.IsNullOrEmpty(cleaned) && (questionHistory == null || !questionHistory.IsDuplicateOrSimilar(cleaned)))
+                    {
+                        generatedResponse = cleaned;
+                        responseAccepted = true;
+                    }
+                });
+            }
+
+            if (!responseAccepted || string.IsNullOrEmpty(generatedResponse))
+            {
+                generatedResponse = GetUniqueDynamicFallbackStatement(topic, peerPersona);
+            }
+
+            if (questionHistory != null) questionHistory.AddStatement(generatedResponse);
+            fullConversationHistory.Add(peerName + ": " + generatedResponse);
+            onResponseReceived?.Invoke(generatedResponse);
         }
 
         private IEnumerator SendGeminiRequest(string prompt, Action<string> onResult)
@@ -455,12 +452,11 @@ namespace MentalHealthApp.Discussion
 
             if (string.IsNullOrEmpty(apiKey))
             {
-                Debug.LogWarning("[Gemini] API Key missing. Falling back to local peer pool.");
-                onResult?.Invoke(GetUniqueFallbackStatement());
+                Debug.LogWarning("[Gemini] API Key missing.");
+                onResult?.Invoke(null);
                 yield break;
             }
 
-            // Route to OpenAI API if key starts with sk-
             if (apiKey.Trim().StartsWith("sk-"))
             {
                 yield return SendOpenAIRequest(prompt, onResult);
@@ -493,7 +489,7 @@ namespace MentalHealthApp.Discussion
                     request.SetRequestHeader("Content-Type", "application/json");
                     request.timeout = Mathf.RoundToInt(apiTimeout);
 
-                    Debug.Log(string.Format("[Gemini] Sending generateContent request (Attempt {0}/{1}) to model: {2}", retryCount, maxRetries + 1, activeModel));
+                    Debug.Log(string.Format("[Gemini] Sending live request (Attempt {0}/{1}) to model: {2}", retryCount, maxRetries + 1, activeModel));
                     yield return request.SendWebRequest();
 
                     if (request.result == UnityWebRequest.Result.Success)
@@ -509,7 +505,7 @@ namespace MentalHealthApp.Discussion
                                 {
                                     finalResponse = aiText;
                                     success = true;
-                                    Debug.Log("[Gemini] Live AI response generated successfully: " + aiText);
+                                    Debug.Log("[Gemini API Success] Live AI generated output: " + aiText);
                                     break;
                                 }
                             }
@@ -525,25 +521,22 @@ namespace MentalHealthApp.Discussion
                         string errText = request.downloadHandler != null ? request.downloadHandler.text : "";
                         Debug.LogWarning(string.Format("[Gemini] Request failed (HTTP {0}): {1} | Response: {2}", code, request.error, errText));
 
-                        // 404 Recovery: Selected model is unavailable -> Rediscover available models & retry
                         if (code == 404 || errText.Contains("404") || errText.Contains("NOT_FOUND") || errText.Contains("no longer available"))
                         {
-                            Debug.LogWarning("[Gemini] HTTP 404 - Selected model '" + activeModel + "' unavailable. Rediscovering available models...");
+                            Debug.LogWarning("[Gemini] HTTP 404 - Model '" + activeModel + "' unavailable. Rediscovering models...");
                             discoveredModelName = null;
                             yield return DiscoverAvailableGeminiModel(null);
                             activeModel = GetActiveModelName();
                         }
-                        // 429 Rate Limit: Exponential Backoff
                         else if (code == 429 || errText.Contains("429") || errText.Contains("RESOURCE_EXHAUSTED"))
                         {
                             float backoffSeconds = Mathf.Pow(2, retryCount);
-                            Debug.LogWarning(string.Format("[Gemini] HTTP 429 Rate limit encountered. Backing off for {0:F1}s before retry...", backoffSeconds));
+                            Debug.LogWarning(string.Format("[Gemini] HTTP 429 Rate limit. Backing off for {0:F1}s...", backoffSeconds));
                             yield return new WaitForSeconds(backoffSeconds);
                         }
-                        // 503 High Demand Spikes: Short Wait
                         else if (code == 503 || errText.Contains("UNAVAILABLE") || errText.Contains("high demand"))
                         {
-                            Debug.LogWarning("[Gemini] HTTP 503 High demand spike. Retrying after brief delay...");
+                            Debug.LogWarning("[Gemini] HTTP 503 High demand. Retrying after brief delay...");
                             yield return new WaitForSeconds(1.5f);
                         }
                         else
@@ -560,15 +553,15 @@ namespace MentalHealthApp.Discussion
             }
             else
             {
-                Debug.LogWarning("[Gemini] All Gemini retries exhausted or network unavailable. Using graceful local fallback.");
-                onResult?.Invoke(GetUniqueFallbackStatement());
+                Debug.LogWarning("[Gemini] Retries exhausted.");
+                onResult?.Invoke(null);
             }
         }
 
         private IEnumerator SendOpenAIRequest(string prompt, Action<string> onResult)
         {
             string url = "https://api.openai.com/v1/chat/completions";
-            string systemInstruction = "You are a creative, highly versatile college student participating in an interactive group discussion on student mental health. Never repeat previous questions, phrases, or ideas. Keep responses to 1-2 empathetic sentences.";
+            string systemInstruction = "You are a creative, highly versatile college student participating in an interactive group discussion on student mental health. Keep responses to 1-2 empathetic sentences.";
             
             string jsonPayload = "{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"" + EscapeJsonString(systemInstruction) + "\"},{\"role\":\"user\",\"content\":\"" + EscapeJsonString(prompt) + "\"}],\"temperature\":0.85,\"top_p\":0.95}";
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
@@ -594,7 +587,7 @@ namespace MentalHealthApp.Discussion
                             string aiText = parsed.choices[0].message.content.Trim();
                             if (!string.IsNullOrEmpty(aiText))
                             {
-                                Debug.Log("[OpenAI API Success] Generated live AI response: " + aiText);
+                                Debug.Log("[OpenAI API Success]: " + aiText);
                                 onResult?.Invoke(aiText);
                                 yield break;
                             }
@@ -651,7 +644,7 @@ namespace MentalHealthApp.Discussion
                     catch { }
                 }
 
-                onResult?.Invoke(GetUniqueFallbackStatement());
+                onResult?.Invoke(null);
             }
         }
 
@@ -725,19 +718,11 @@ namespace MentalHealthApp.Discussion
             }
         }
 
-        private string GetUniqueFallbackStatement()
+        private string GetUniqueDynamicFallbackStatement(string topic, string persona)
         {
-            for (int i = 0; i < nonRepeatingPeerPool.Length; i++)
-            {
-                int idx = (fallbackIndex + i) % nonRepeatingPeerPool.Length;
-                string q = nonRepeatingPeerPool[idx];
-                if (!askedQuestionsHistory.Contains(q))
-                {
-                    fallbackIndex = idx + 1;
-                    return q;
-                }
-            }
-            return nonRepeatingPeerPool[UnityEngine.Random.Range(0, nonRepeatingPeerPool.Length)];
+            string cleanTopic = string.IsNullOrEmpty(topic) ? "student mental health" : topic;
+            string cleanPersona = string.IsNullOrEmpty(persona) ? "a supportive peer" : persona;
+            return string.Format("As {0}, I believe that actively addressing {1} through transparent communication and healthy personal boundaries helps everyone stay resilient.", cleanPersona, cleanTopic);
         }
 
         private string CleanResponse(string raw)
