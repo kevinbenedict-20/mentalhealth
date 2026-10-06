@@ -224,14 +224,22 @@ namespace MentalHealthApp.Discussion
                         if (parsed != null && parsed.candidates != null && parsed.candidates.Length > 0 && parsed.candidates[0].content.parts.Length > 0)
                         {
                             string aiText = parsed.candidates[0].content.parts[0].text.Trim();
-                            onResult?.Invoke(aiText);
-                            yield break;
+                            if (!string.IsNullOrEmpty(aiText))
+                            {
+                                Debug.Log("[Gemini API Success] Live AI generated response: " + aiText);
+                                onResult?.Invoke(aiText);
+                                yield break;
+                            }
                         }
                     }
                     catch (Exception ex)
                     {
                         Debug.LogError("Error parsing Gemini API JSON: " + ex.Message);
                     }
+                }
+                else
+                {
+                    Debug.LogWarning("Gemini API WebRequest failed (" + request.responseCode + "): " + request.error + " | Response: " + request.downloadHandler.text);
                 }
 
                 // Fallback on error
