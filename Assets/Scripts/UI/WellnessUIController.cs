@@ -328,7 +328,7 @@ namespace MentalHealthApp.UI
             idBg.color = new Color(0.18f, 0.22f, 0.28f);
             studentIdInput = idObj.AddComponent<TMP_InputField>();
 
-            GameObject placeholder = AddText(idObj, "Enter Anonymized Student ID (e.g. STU_4829)", 16, Color.gray, new Vector2(500, 35));
+            GameObject placeholder = AddText(idObj, "Enter Student Name (Default: Kevin)", 16, Color.gray, new Vector2(500, 35));
             studentIdInput.placeholder = placeholder.GetComponent<TextMeshProUGUI>();
 
             GameObject textArea = AddText(idObj, "", 18, Color.white, new Vector2(500, 35));
@@ -379,7 +379,7 @@ namespace MentalHealthApp.UI
 
                 if (wellnessTracker != null)
                 {
-                    wellnessTracker.InitializeSession(studentIdInput != null && !string.IsNullOrEmpty(studentIdInput.text) ? studentIdInput.text : "STU_ANON", (int)preStressSlider.value, (int)preConfidenceSlider.value);
+                    wellnessTracker.InitializeSession(studentIdInput != null && !string.IsNullOrEmpty(studentIdInput.text) ? studentIdInput.text : "Kevin", (int)preStressSlider.value, (int)preConfidenceSlider.value);
                 }
 
                 // Hide & disable all PreAssessmentPanel instances completely

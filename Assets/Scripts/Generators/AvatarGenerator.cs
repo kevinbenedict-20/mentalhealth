@@ -14,7 +14,7 @@ namespace MentalHealthApp.Generators
         private string[] studentNames = new string[]
         {
             "Maya (Discussion Leader)",   // Seat 0 - Purple Hoodie
-            "Alex (Assessed Student)",     // Seat 1 - Cream Sweater
+            "Kevin (You)",                // Seat 1 - Cream Sweater
             "Karan (Peer)",                // Seat 2 - Green Hoodie
             "Arjun (Peer)",                // Seat 3 - Dark Blue Hoodie + Glasses
             "Priya (Peer)"                 // Seat 4 - Burgundy Sweater

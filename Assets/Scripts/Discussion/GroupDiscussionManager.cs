@@ -55,13 +55,15 @@ namespace MentalHealthApp.Discussion
         {
             "Managing Academic Workload & Exam Stress",
             "Effective Strategies for Team Collaboration & Communication",
-            "Maintaining Personal Well-being, Rest & Study-Life Balance"
+            "Maintaining Personal Well-being, Rest & Study-Life Balance",
+            "Navigating Peer Pressure & Mental Health Resilience",
+            "Overcoming Academic Burnout & Building Positive Habits"
         };
 
         private string[] avatarPersonas = new string[]
         {
             "Supportive & empathetic group discussion moderator and leader",                                // Seat 0 - Maya
-            "Assessed college student sharing personal reflections",                                        // Seat 1 - Alex
+            "Kevin - College student sharing genuine personal reflections and insights",                   // Seat 1 - Kevin
             "Attentive student sharing practical time-management and workload breakdown techniques",        // Seat 2 - Karan
             "Analytical student focusing on active listening, clear team roles, and structured collaboration",// Seat 3 - Arjun
             "Compassionate psychology student emphasizing personal boundaries, rest, and mental wellness"   // Seat 4 - Priya

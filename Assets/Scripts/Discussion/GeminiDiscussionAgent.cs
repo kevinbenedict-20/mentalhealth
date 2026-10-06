@@ -39,8 +39,9 @@ namespace MentalHealthApp.Discussion
 
         private HashSet<string> askedQuestionsHistory = new HashSet<string>();
         private int fallbackIndex = 0;
+        private string sessionGuid = Guid.NewGuid().ToString().Substring(0, 8);
 
-        private string[] nonRepeatingPeerQuestions = new string[]
+        private string[] nonRepeatingPeerPool = new string[]
         {
             "How do you usually recognize when study stress is starting to affect your daily routine?",
             "What strategies have you found most helpful for staying focused during heavy exam weeks?",
@@ -48,25 +49,36 @@ namespace MentalHealthApp.Discussion
             "What is one healthy boundary you set to protect your personal time after classes?",
             "How do you encourage quiet team members to share their ideas without feeling put on the spot?",
             "When academic pressure mounts, who or what is your primary source of support?",
-            "What small daily habit helps you reset your mind after a long day of lectures?"
+            "What small daily habit helps you reset your mind after a long day of lectures?",
+            "I've realized that taking 10-minute walk breaks between study blocks keeps my mind surprisingly clear.",
+            "Setting up clear communication channels early in team projects prevents so much last-minute anxiety.",
+            "I find that speaking up about workload stress with peers helps me realize I'm not alone in feeling overwhelmed.",
+            "Prioritizing consistent sleep hygiene completely changed how I handle exam week pressure.",
+            "Learning to say no to extra non-essential commitments gives me space to recharge mentally.",
+            "Active listening and validating each other's ideas makes group discussions feel like a safe haven.",
+            "What is a personal stress indicator that tells you it's time to take a mental break?"
         };
 
         public IEnumerator GeneratePeerStatement(string peerName, string peerPersona, string topic, List<string> recentDialogueHistory, Action<string> onStatementReceived)
         {
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
             string systemPrompt = string.Format(
-                "You are participating in a supportive college group discussion on student mental health. " +
-                "Your name is {0} and your persona is: {1}. " +
-                "Topic: '{2}'. " +
-                "Previous statements in the group:\n{3}\n" +
-                "CRITICAL RULE: Share a fresh, empathetic 1-2 sentence thought or strategy on the topic. Do NOT repeat previous points or questions.",
-                peerName, peerPersona, topic, historyContext
+                "You are participating in an authentic college student mental health group discussion. " +
+                "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
+                "Topic: '{3}'. " +
+                "Previous statements in the group:\n{4}\n" +
+                "CRITICAL RULE: Give a completely unique, highly creative, empathetic 1-2 sentence statement or tip on the topic. DO NOT repeat any previous ideas, phrases, or questions.",
+                sessionGuid, peerName, peerPersona, topic, historyContext
             );
 
             yield return SendGeminiRequest(systemPrompt, (res) =>
             {
                 string cleaned = CleanResponse(res);
-                if (string.IsNullOrEmpty(cleaned)) cleaned = GetUniqueFallbackQuestion();
+                if (string.IsNullOrEmpty(cleaned) || askedQuestionsHistory.Contains(cleaned))
+                {
+                    cleaned = GetUniqueFallbackStatement();
+                }
+                askedQuestionsHistory.Add(cleaned);
                 onStatementReceived?.Invoke(cleaned);
             });
         }
@@ -76,12 +88,12 @@ namespace MentalHealthApp.Discussion
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
 
             string systemPrompt = string.Format(
-                "You are participating in a college group discussion on student mental health and well-being. " +
-                "Your name is {0} and your persona is: {1}. " +
-                "The topic is '{2}'. " +
-                "Previous statements made in the group:\n{3}\n" +
-                "CRITICAL RULE: DO NOT REPEAT ANY PREVIOUS QUESTION OR STATEMENT. Ask a fresh, insightful, open-ended 1-sentence question or make a new point for the group to discuss.",
-                peerName, peerPersona, topic, historyContext
+                "You are participating in an interactive college student mental health group discussion. " +
+                "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
+                "Topic: '{3}'. " +
+                "Previous statements in the group:\n{4}\n" +
+                "CRITICAL RULE: DO NOT REPEAT ANY PREVIOUS QUESTION OR PHRASE. Ask a fresh, insightful, open-ended 1-sentence question for the group to explore.",
+                sessionGuid, peerName, peerPersona, topic, historyContext
             );
 
             yield return SendGeminiRequest(systemPrompt, (res) =>
@@ -89,7 +101,7 @@ namespace MentalHealthApp.Discussion
                 string cleaned = CleanResponse(res);
                 if (askedQuestionsHistory.Contains(cleaned) || string.IsNullOrEmpty(cleaned))
                 {
-                    cleaned = GetUniqueFallbackQuestion();
+                    cleaned = GetUniqueFallbackStatement();
                 }
                 askedQuestionsHistory.Add(cleaned);
                 onQuestionReceived?.Invoke(cleaned);
@@ -100,15 +112,16 @@ namespace MentalHealthApp.Discussion
         {
             string systemPrompt = string.Format(
                 "You are participating in a supportive college group discussion on student mental health. " +
-                "Your name is {0} and your persona is: {1}. " +
-                "Topic: '{2}'. The student just said: \"{3}\". " +
-                "CRITICAL RULE: Do NOT repeat previous questions. Give a fresh, empathetic 2-sentence response building directly on their thoughts.",
-                peerName, peerPersona, topic, studentInput
+                "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
+                "Topic: '{3}'. The student (Kevin) just said: \"{4}\". " +
+                "CRITICAL RULE: Give a fresh, dynamic, empathetic 2-sentence response building directly on Kevin's input. Do NOT repeat previous phrases.",
+                sessionGuid, peerName, peerPersona, topic, studentInput
             );
 
             yield return SendGeminiRequest(systemPrompt, (res) =>
             {
                 string cleaned = CleanResponse(res);
+                if (string.IsNullOrEmpty(cleaned)) cleaned = GetUniqueFallbackStatement();
                 onResponseReceived?.Invoke(cleaned);
             });
         }
@@ -117,13 +130,12 @@ namespace MentalHealthApp.Discussion
         {
             if (string.IsNullOrEmpty(apiKey))
             {
-                Debug.Log("Gemini API Key empty. Using unique fallback question.");
-                onResult?.Invoke(GetUniqueFallbackQuestion());
+                onResult?.Invoke(GetUniqueFallbackStatement());
                 yield break;
             }
 
             string url = string.Format("https://generativelanguage.googleapis.com/v1beta/models/{0}:generateContent?key={1}", modelName, apiKey);
-            string jsonPayload = "{\"contents\":[{\"parts\":[{\"text\":\"" + EscapeJsonString(prompt) + "\"}]}]}";
+            string jsonPayload = "{\"contents\":[{\"parts\":[{\"text\":\"" + EscapeJsonString(prompt) + "\"}]}],\"generationConfig\":{\"temperature\":0.95,\"topP\":0.95}}";
 
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
 
@@ -155,23 +167,23 @@ namespace MentalHealthApp.Discussion
                 }
 
                 // Fallback on error
-                onResult?.Invoke(GetUniqueFallbackQuestion());
+                onResult?.Invoke(GetUniqueFallbackStatement());
             }
         }
 
-        private string GetUniqueFallbackQuestion()
+        private string GetUniqueFallbackStatement()
         {
-            for (int i = 0; i < nonRepeatingPeerQuestions.Length; i++)
+            for (int i = 0; i < nonRepeatingPeerPool.Length; i++)
             {
-                int idx = (fallbackIndex + i) % nonRepeatingPeerQuestions.Length;
-                string q = nonRepeatingPeerQuestions[idx];
+                int idx = (fallbackIndex + i) % nonRepeatingPeerPool.Length;
+                string q = nonRepeatingPeerPool[idx];
                 if (!askedQuestionsHistory.Contains(q))
                 {
                     fallbackIndex = idx + 1;
                     return q;
                 }
             }
-            return nonRepeatingPeerQuestions[fallbackIndex++ % nonRepeatingPeerQuestions.Length];
+            return nonRepeatingPeerPool[UnityEngine.Random.Range(0, nonRepeatingPeerPool.Length)];
         }
 
         private string CleanResponse(string raw)
