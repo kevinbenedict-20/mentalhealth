@@ -245,6 +245,7 @@ namespace MentalHealthApp.Discussion
                     }
 
                     ShowSpeechBubble(peerAvatar, dialogueText);
+                    if (vrHeadLook != null && peerAvatar.headTransform != null) vrHeadLook.PlaySpatialAvatarChime(peerAvatar.headTransform.position);
                     if (uiController != null) uiController.ShowSubtitle(peerAvatar.studentName, dialogueText, badgeCol);
                     recentDialogueHistory.Add(peerAvatar.studentName + ": " + dialogueText);
 
@@ -341,6 +342,7 @@ namespace MentalHealthApp.Discussion
                 }
 
                 ShowSpeechBubble(leaderAvatar, aiText);
+                if (vrHeadLook != null && leaderAvatar.headTransform != null) vrHeadLook.PlaySpatialAvatarChime(leaderAvatar.headTransform.position);
                 if (uiController != null) uiController.ShowSubtitle(leaderAvatar.studentName + " (Leader)", aiText, badgeColors[0]);
                 recentDialogueHistory.Add(leaderAvatar.studentName + ": " + aiText);
                 if (questionHistory != null) questionHistory.AddStatement(aiText);
