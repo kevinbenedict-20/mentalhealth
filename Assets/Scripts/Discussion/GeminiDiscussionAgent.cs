@@ -242,7 +242,9 @@ namespace MentalHealthApp.Discussion
         private IEnumerator SendOpenAIRequest(string prompt, Action<string> onResult)
         {
             string url = "https://api.openai.com/v1/chat/completions";
-            string jsonPayload = "{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"" + EscapeJsonString(prompt) + "\"}],\"temperature\":0.85}";
+            string systemInstruction = "You are a creative, highly versatile college student participating in an interactive group discussion on student mental health. Never repeat previous questions, phrases, or ideas. Keep responses to 1-2 empathetic sentences.";
+            
+            string jsonPayload = "{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"" + EscapeJsonString(systemInstruction) + "\"},{\"role\":\"user\",\"content\":\"" + EscapeJsonString(prompt) + "\"}],\"temperature\":0.95,\"top_p\":0.95}";
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
 
             using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
@@ -263,14 +265,63 @@ namespace MentalHealthApp.Discussion
                         if (parsed != null && parsed.choices != null && parsed.choices.Length > 0 && parsed.choices[0].message != null)
                         {
                             string aiText = parsed.choices[0].message.content.Trim();
-                            onResult?.Invoke(aiText);
-                            yield break;
+                            if (!string.IsNullOrEmpty(aiText))
+                            {
+                                Debug.Log("[OpenAI API Success] Generated live AI response: " + aiText);
+                                onResult?.Invoke(aiText);
+                                yield break;
+                            }
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError("Error parsing OpenAI API JSON: " + ex.Message);
+                        Debug.LogError("Error parsing OpenAI API JSON response: " + ex.Message);
                     }
+                }
+                else
+                {
+                    Debug.LogWarning("OpenAI API WebRequest failed (" + request.responseCode + "): " + request.error + " | Response: " + request.downloadHandler.text);
+                }
+
+                // If gpt-4o-mini fails, try gpt-3.5-turbo fallback before static pool
+                yield return SendOpenAIFallbackModelRequest(prompt, onResult);
+            }
+        }
+
+        private IEnumerator SendOpenAIFallbackModelRequest(string prompt, Action<string> onResult)
+        {
+            string url = "https://api.openai.com/v1/chat/completions";
+            string systemInstruction = "You are a creative college student in a group discussion on mental health. Keep responses concise and fresh.";
+            string jsonPayload = "{\"model\":\"gpt-3.5-turbo\",\"messages\":[{\"role\":\"system\",\"content\":\"" + EscapeJsonString(systemInstruction) + "\"},{\"role\":\"user\",\"content\":\"" + EscapeJsonString(prompt) + "\"}],\"temperature\":0.9}";
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
+
+            using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
+            {
+                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+                request.SetRequestHeader("Authorization", "Bearer " + apiKey.Trim());
+
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        string responseJson = request.downloadHandler.text;
+                        OpenAIResponseData parsed = JsonUtility.FromJson<OpenAIResponseData>(responseJson);
+                        if (parsed != null && parsed.choices != null && parsed.choices.Length > 0 && parsed.choices[0].message != null)
+                        {
+                            string aiText = parsed.choices[0].message.content.Trim();
+                            if (!string.IsNullOrEmpty(aiText))
+                            {
+                                Debug.Log("[OpenAI Fallback Model Success]: " + aiText);
+                                onResult?.Invoke(aiText);
+                                yield break;
+                            }
+                        }
+                    }
+                    catch { }
                 }
 
                 onResult?.Invoke(GetUniqueFallbackStatement());
