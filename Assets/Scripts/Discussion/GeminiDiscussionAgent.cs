@@ -209,5 +209,63 @@ namespace MentalHealthApp.Discussion
             if (string.IsNullOrEmpty(str)) return "";
             return str.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", " ");
         }
+
+        public string LoadSecureAPIKey()
+        {
+            // 1. Check System Environment Variable first
+            string envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+            if (string.IsNullOrEmpty(envKey)) envKey = Environment.GetEnvironmentVariable("UNITY_GEMINI_API_KEY");
+            if (!string.IsNullOrEmpty(envKey))
+            {
+                apiKey = envKey.Trim();
+                return apiKey;
+            }
+
+            // 2. Check Local Persistent Device Storage
+            string configPath = System.IO.Path.Combine(Application.persistentDataPath, "gemini_key.json");
+            if (System.IO.File.Exists(configPath))
+            {
+                try
+                {
+                    string json = System.IO.File.ReadAllText(configPath);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        apiKey = json.Trim();
+                        return apiKey;
+                    }
+                }
+                catch { }
+            }
+
+            // 3. Check PlayerPrefs Fallback
+            string prefKey = PlayerPrefs.GetString("GEMINI_SECURE_KEY", "");
+            if (!string.IsNullOrEmpty(prefKey))
+            {
+                apiKey = prefKey.Trim();
+                return apiKey;
+            }
+
+            return apiKey;
+        }
+
+        public void SaveSecureAPIKey(string newKey)
+        {
+            if (string.IsNullOrEmpty(newKey)) return;
+            string trimmed = newKey.Trim();
+            apiKey = trimmed;
+
+            try
+            {
+                // Save locally outside git repo to persistentDataPath
+                string configPath = System.IO.Path.Combine(Application.persistentDataPath, "gemini_key.json");
+                System.IO.File.WriteAllText(configPath, trimmed);
+                PlayerPrefs.SetString("GEMINI_SECURE_KEY", trimmed);
+                PlayerPrefs.Save();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("Could not persist Gemini key locally: " + ex.Message);
+            }
+        }
     }
 }

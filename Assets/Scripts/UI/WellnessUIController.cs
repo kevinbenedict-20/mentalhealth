@@ -351,6 +351,16 @@ namespace MentalHealthApp.UI
             GameObject keyTextArea = AddText(keyObj, "", 18, Color.white, new Vector2(500, 35));
             geminiApiKeyInput.textComponent = keyTextArea.GetComponent<TextMeshProUGUI>();
 
+            // Auto-load existing secure key if stored locally or in environment variable
+            if (discussionManager != null && discussionManager.geminiAgent != null)
+            {
+                string loadedKey = discussionManager.geminiAgent.LoadSecureAPIKey();
+                if (!string.IsNullOrEmpty(loadedKey))
+                {
+                    geminiApiKeyInput.text = loadedKey;
+                }
+            }
+
             // Pre-Stress Slider Label & Slider
             AddText(preAssessmentPanel, "Pre-Session Stress Level (1 = Low, 10 = High):", 18, Color.white, new Vector2(500, 30), new Vector2(0, 40));
             preStressSlider = AddSlider(preAssessmentPanel, new Vector2(0, 5), 1, 10, 3);
@@ -373,7 +383,11 @@ namespace MentalHealthApp.UI
                 {
                     if (geminiApiKeyInput != null && !string.IsNullOrEmpty(geminiApiKeyInput.text))
                     {
-                        discussionManager.geminiAgent.apiKey = geminiApiKeyInput.text.Trim();
+                        discussionManager.geminiAgent.SaveSecureAPIKey(geminiApiKeyInput.text.Trim());
+                    }
+                    else
+                    {
+                        discussionManager.geminiAgent.LoadSecureAPIKey();
                     }
                 }
 

@@ -30,3 +30,9 @@ sysinfo.txt
 
 .DS_Store
 Thumbs.db
+
+# Secrets & Local API Configurations
+gemini_config.json
+gemini_key.json
+*.key
+.env
