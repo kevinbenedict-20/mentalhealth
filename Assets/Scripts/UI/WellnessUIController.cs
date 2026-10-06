@@ -560,11 +560,23 @@ namespace MentalHealthApp.UI
             commScoreText.text = string.Format("Communication Ease: {0:F0}%", data.communicationEaseScore);
             socialScoreText.text = string.Format("Social Comfort: {0:F0}%", data.socialEngagementScore);
 
-            string tipsCombined = "SUPPORTIVE FEEDBACK & WELLNESS TIPS:\n\n";
+            string tipsCombined = "REAL-TIME BEHAVIORAL TRACKING SUMMARY:\n" +
+                string.Format("• Tracking Mode: {0}\n", data.gazeTrackingLabel) +
+                string.Format("• Speaker Gaze Attention: {0:F1}s | Looking Away: {1:F1}s | Gaze Switches: {2}\n", data.gazeSpeakerAttentionTime, data.gazeAwayTime, data.gazeSwitchCount) +
+                string.Format("• Head Motion Level: {0} (Total Movement: {1:F2}m)\n", data.headMovementLevel, data.totalHeadDistanceTraveled) +
+                string.Format("• Facial Expression Tracking: {0}\n\n", data.facialTrackingStatus) +
+                "SUPPORTIVE FEEDBACK & WELLNESS TIPS:\n";
+
             foreach (string tip in data.supportiveTips)
             {
                 tipsCombined += "• " + tip + "\n";
             }
+
+            tipsCombined += "\n<size=12><color=#80A0C0>" +
+                "DISCLAIMER 1: Behavioral measurements are based on available VR tracking data during this session. Gaze represents headset/head orientation rather than true eye movement unless eye-tracking hardware is available. Facial-expression measurements are only provided when supported by the hardware.\n" +
+                "DISCLAIMER 2: These indicators describe observable session behavior and self-reported experience. They are not a medical or psychological diagnosis." +
+                "</color></size>";
+
             feedbackTipsText.text = tipsCombined;
 
             resultsDashboardPanel.SetActive(true);

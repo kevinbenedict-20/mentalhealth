@@ -78,6 +78,10 @@ namespace MentalHealthApp.Discussion
             new Color(0.85f, 0.35f, 0.4f)  // Priya - Burgundy
         };
 
+        [Header("Tracking & Memory References")]
+        public MentalHealthApp.Tracking.RealtimeVRTrackingManager trackingManager;
+        public GDQuestionHistory questionHistory;
+
         public void StartSession()
         {
             if (geminiAgent == null)
@@ -85,6 +89,20 @@ namespace MentalHealthApp.Discussion
                 geminiAgent = GetComponent<GeminiDiscussionAgent>();
                 if (geminiAgent == null) geminiAgent = gameObject.AddComponent<GeminiDiscussionAgent>();
             }
+
+            if (trackingManager == null)
+            {
+                trackingManager = GetComponent<MentalHealthApp.Tracking.RealtimeVRTrackingManager>();
+                if (trackingManager == null) trackingManager = gameObject.AddComponent<MentalHealthApp.Tracking.RealtimeVRTrackingManager>();
+            }
+
+            if (questionHistory == null)
+            {
+                questionHistory = GetComponent<GDQuestionHistory>();
+                if (questionHistory == null) questionHistory = gameObject.AddComponent<GDQuestionHistory>();
+            }
+
+            questionHistory.ClearHistory();
 
             if (string.IsNullOrEmpty(geminiAgent.apiKey))
             {
@@ -96,8 +114,14 @@ namespace MentalHealthApp.Discussion
             recentDialogueHistory.Clear();
             currentPhase = DiscussionPhase.Introduction;
 
-            // Automatically seat user in VR First-Person POV at Seat 1 when GD starts!
+            // 1. Lock camera strictly into VR First-Person POV at Seat 1 (Kevin)
             SwitchToVRSeatPOV();
+
+            // 2. Start Real-time Camera & Gaze Tracking
+            if (trackingManager != null)
+            {
+                trackingManager.StartTracking(Camera.main, avatarGenerator);
+            }
 
             if (discussionRoutine != null) StopCoroutine(discussionRoutine);
             discussionRoutine = StartCoroutine(RunDiscussionLoop());
@@ -118,7 +142,7 @@ namespace MentalHealthApp.Discussion
             EnsureVRController();
             currentVRMode = CameraVRMode.FirstPersonPOV;
 
-            // Seat 1 - Assessed Student Alex's seat position
+            // Seat 1 - Assessed Student Kevin's seat position
             Vector3 seatPos = new Vector3(-0.95f, 0, -1.35f);
             if (avatarGenerator != null && avatarGenerator.generatedAvatars.Count > 1 && avatarGenerator.generatedAvatars[1].avatarRoot != null)
             {
@@ -140,13 +164,17 @@ namespace MentalHealthApp.Discussion
             if (avatarGenerator != null && avatarGenerator.generatedAvatars.Count > 0)
             {
                 StudentAvatarData facilitator = avatarGenerator.generatedAvatars[0]; // Maya
-                FocusCameraOnAvatar(facilitator);
+                currentSpeakerIndex = 0;
+                if (trackingManager != null) trackingManager.activeSpeakerIndex = 0;
+
+                OrientHeadsTowards(facilitator.headTransform.position);
                 SetAvatarExpression(facilitator, AvatarExpression.Speaking);
                 SetGroupExpressionExcept(facilitator, AvatarExpression.Empathetic);
 
                 ShowSpeechBubble(facilitator, introText);
                 if (uiController != null) uiController.ShowSubtitle(facilitator.studentName + " (Leader)", introText, badgeColors[0]);
                 recentDialogueHistory.Add(facilitator.studentName + ": " + introText);
+                if (questionHistory != null) questionHistory.AddStatement(introText);
             }
             yield return new WaitForSeconds(5f);
             if (uiController != null) uiController.HideSubtitle();
@@ -168,12 +196,12 @@ namespace MentalHealthApp.Discussion
                 for (int p = 2; p < avatarGenerator.generatedAvatars.Count && p <= 4; p++)
                 {
                     currentSpeakerIndex = p;
+                    if (trackingManager != null) trackingManager.activeSpeakerIndex = p;
+
                     StudentAvatarData peerAvatar = avatarGenerator.generatedAvatars[p];
                     Color badgeCol = (p < badgeColors.Length) ? badgeColors[p] : Color.cyan;
 
-                    FocusCameraOnAvatar(peerAvatar);
                     OrientHeadsTowards(peerAvatar.headTransform.position);
-
                     SetAvatarExpression(peerAvatar, AvatarExpression.Speaking);
                     SetGroupExpressionExcept(peerAvatar, AvatarExpression.Thinking);
 
@@ -193,6 +221,7 @@ namespace MentalHealthApp.Discussion
                                 aiGenerated = true;
                             }
                         );
+                        if (questionHistory != null) questionHistory.AddQuestion(dialogueText, p, topics[t], QuestionIntent.Clarification, 2);
                     }
                     else // Seats 2 & 3 share peer AI statements
                     {
@@ -207,6 +236,7 @@ namespace MentalHealthApp.Discussion
                                 aiGenerated = true;
                             }
                         );
+                        if (questionHistory != null) questionHistory.AddStatement(dialogueText);
                     }
 
                     if (!aiGenerated || string.IsNullOrEmpty(dialogueText))
@@ -225,14 +255,21 @@ namespace MentalHealthApp.Discussion
                     SetAvatarExpression(peerAvatar, AvatarExpression.Empathetic);
                 }
 
-                // Assessed Student's Turn (Seat 1 - Alex / Player)
+                // Assessed Student's Turn (Seat 1 - Kevin / Player)
                 currentPhase = DiscussionPhase.AssessedStudentTurn;
                 currentSpeakerIndex = 1;
+                if (trackingManager != null)
+                {
+                    trackingManager.activeSpeakerIndex = 1;
+                    trackingManager.isUserSpeaking = true;
+                    trackingManager.userResponseLatency = Time.time;
+                }
+
                 StudentAvatarData assessedAvatar = avatarGenerator.generatedAvatars[1];
-                
-                SwitchToVRSeatPOV();
+
+                // Real-time Reaction: All avatar participants turn their heads to face Kevin (Seat 1)!
                 OrientHeadsTowards(assessedAvatar.headTransform.position);
-                SetGroupExpressionExcept(assessedAvatar, AvatarExpression.Thinking);
+                SetGroupExpressionExcept(assessedAvatar, AvatarExpression.Empathetic);
 
                 UpdateScreen(topicHeader, "YOUR TURN: Select or type your response to participate in the discussion.", "STATUS: AWAITING YOUR INPUT");
 
@@ -243,12 +280,17 @@ namespace MentalHealthApp.Discussion
                 {
                     studentResponseText = selectedOptionText;
                     wellnessTracker.RecordAssessedStudentResponse(selectedOptionText, confidenceRating);
-                    
-                    FocusCameraOnAvatar(assessedAvatar);
+
+                    if (trackingManager != null)
+                    {
+                        trackingManager.userResponseLatency = Time.time - trackingManager.userResponseLatency;
+                    }
+
                     SetAvatarExpression(assessedAvatar, AvatarExpression.Speaking);
                     ShowSpeechBubble(assessedAvatar, selectedOptionText);
                     if (uiController != null) uiController.ShowSubtitle(assessedAvatar.studentName + " (You)", selectedOptionText, badgeColors[1]);
-                    recentDialogueHistory.Add("You: " + selectedOptionText);
+                    recentDialogueHistory.Add("Kevin: " + selectedOptionText);
+                    if (questionHistory != null) questionHistory.AddStatement(selectedOptionText);
                     responseGiven = true;
                 });
 
@@ -263,14 +305,16 @@ namespace MentalHealthApp.Discussion
                 if (uiController != null) uiController.HideSubtitle();
                 SetAvatarExpression(assessedAvatar, AvatarExpression.Neutral);
 
-                // Dynamic AI Peer Response Turn (Discussion Leader Maya - Seat 0)
+                if (trackingManager != null) trackingManager.isUserSpeaking = false;
+
+                // Realistic Interruption + AI Peer Response Turn (Leader Maya - Seat 0)
                 currentPhase = DiscussionPhase.PeerAIResponseTurn;
                 currentSpeakerIndex = 0;
-                StudentAvatarData leaderAvatar = avatarGenerator.generatedAvatars[0]; // Maya
-                
-                FocusCameraOnAvatar(leaderAvatar);
-                OrientHeadsTowards(leaderAvatar.headTransform.position);
+                if (trackingManager != null) trackingManager.activeSpeakerIndex = 0;
 
+                StudentAvatarData leaderAvatar = avatarGenerator.generatedAvatars[0]; // Maya
+
+                OrientHeadsTowards(leaderAvatar.headTransform.position);
                 SetAvatarExpression(leaderAvatar, AvatarExpression.Speaking);
                 SetGroupExpressionExcept(leaderAvatar, AvatarExpression.Empathetic);
 
@@ -299,6 +343,7 @@ namespace MentalHealthApp.Discussion
                 ShowSpeechBubble(leaderAvatar, aiText);
                 if (uiController != null) uiController.ShowSubtitle(leaderAvatar.studentName + " (Leader)", aiText, badgeColors[0]);
                 recentDialogueHistory.Add(leaderAvatar.studentName + ": " + aiText);
+                if (questionHistory != null) questionHistory.AddStatement(aiText);
 
                 UpdateScreen(topicHeader, "Maya: \"" + aiText + "\"", "STATUS: AI PEER RESPONDED");
                 yield return new WaitForSeconds(6f);
@@ -309,7 +354,23 @@ namespace MentalHealthApp.Discussion
 
             // Post-Discussion Phase
             currentPhase = DiscussionPhase.PostSession;
-            ResetCameraToOverview();
+            if (trackingManager != null)
+            {
+                trackingManager.StopTracking();
+                if (wellnessTracker != null && trackingManager.attentionTracker != null && trackingManager.headTracker != null && trackingManager.handTracker != null)
+                {
+                    wellnessTracker.RecordTrackingSnapshot(
+                        trackingManager.attentionTracker.timeOrientedTowardSpeaker,
+                        trackingManager.attentionTracker.timeOrientedAwayFromSpeaker,
+                        trackingManager.attentionTracker.gazeSwitchCount,
+                        trackingManager.headTracker.totalHeadDistanceTraveled,
+                        trackingManager.headTracker.headMovementLevel,
+                        trackingManager.handTracker.handTrackingAvailable,
+                        trackingManager.handTracker.facialTrackingAvailable
+                    );
+                }
+            }
+
             UpdateScreen("DISCUSSION COMPLETED", "Thank you for participating!\n\nPlease complete the brief post-session reflection.", "STATUS: WRAPPING UP");
 
             yield return new WaitForSeconds(3f);

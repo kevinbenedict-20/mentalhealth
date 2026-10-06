@@ -59,8 +59,12 @@ namespace MentalHealthApp.Discussion
             "What is a personal stress indicator that tells you it's time to take a mental break?"
         };
 
+        [Header("Question Memory Reference")]
+        public GDQuestionHistory questionHistory;
+
         public IEnumerator GeneratePeerStatement(string peerName, string peerPersona, string topic, List<string> recentDialogueHistory, Action<string> onStatementReceived)
         {
+            if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
             string systemPrompt = string.Format(
                 "You are participating in an authentic college student mental health group discussion. " +
@@ -74,17 +78,19 @@ namespace MentalHealthApp.Discussion
             yield return SendGeminiRequest(systemPrompt, (res) =>
             {
                 string cleaned = CleanResponse(res);
-                if (string.IsNullOrEmpty(cleaned) || askedQuestionsHistory.Contains(cleaned))
+                if (string.IsNullOrEmpty(cleaned) || askedQuestionsHistory.Contains(cleaned) || (questionHistory != null && questionHistory.IsDuplicateOrSimilar(cleaned)))
                 {
                     cleaned = GetUniqueFallbackStatement();
                 }
                 askedQuestionsHistory.Add(cleaned);
+                if (questionHistory != null) questionHistory.AddStatement(cleaned);
                 onStatementReceived?.Invoke(cleaned);
             });
         }
 
         public IEnumerator GeneratePeerQuestion(string peerName, string peerPersona, string topic, List<string> recentDialogueHistory, Action<string> onQuestionReceived)
         {
+            if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
 
             string systemPrompt = string.Format(
@@ -99,17 +105,19 @@ namespace MentalHealthApp.Discussion
             yield return SendGeminiRequest(systemPrompt, (res) =>
             {
                 string cleaned = CleanResponse(res);
-                if (askedQuestionsHistory.Contains(cleaned) || string.IsNullOrEmpty(cleaned))
+                if (askedQuestionsHistory.Contains(cleaned) || string.IsNullOrEmpty(cleaned) || (questionHistory != null && questionHistory.IsDuplicateOrSimilar(cleaned)))
                 {
                     cleaned = GetUniqueFallbackStatement();
                 }
                 askedQuestionsHistory.Add(cleaned);
+                if (questionHistory != null) questionHistory.AddQuestion(cleaned, 4, topic, QuestionIntent.Clarification, 2);
                 onQuestionReceived?.Invoke(cleaned);
             });
         }
 
         public IEnumerator GeneratePeerResponse(string peerName, string peerPersona, string topic, string studentInput, Action<string> onResponseReceived)
         {
+            if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
             string systemPrompt = string.Format(
                 "You are participating in a supportive college group discussion on student mental health. " +
                 "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
@@ -121,7 +129,11 @@ namespace MentalHealthApp.Discussion
             yield return SendGeminiRequest(systemPrompt, (res) =>
             {
                 string cleaned = CleanResponse(res);
-                if (string.IsNullOrEmpty(cleaned)) cleaned = GetUniqueFallbackStatement();
+                if (string.IsNullOrEmpty(cleaned) || (questionHistory != null && questionHistory.IsDuplicateOrSimilar(cleaned)))
+                {
+                    cleaned = GetUniqueFallbackStatement();
+                }
+                if (questionHistory != null) questionHistory.AddStatement(cleaned);
                 onResponseReceived?.Invoke(cleaned);
             });
         }

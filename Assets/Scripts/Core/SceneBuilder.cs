@@ -118,7 +118,12 @@ namespace MentalHealthApp.Core
 
             // 5. Connect Managers & UI
             GeminiDiscussionAgent geminiAgent = GetOrAddComponent<GeminiDiscussionAgent>();
+            GDQuestionHistory questionHistory = GetOrAddComponent<GDQuestionHistory>();
+            MentalHealthApp.Tracking.RealtimeVRTrackingManager trackingManager = GetOrAddComponent<MentalHealthApp.Tracking.RealtimeVRTrackingManager>();
+
             discussionManager.geminiAgent = geminiAgent;
+            discussionManager.questionHistory = questionHistory;
+            discussionManager.trackingManager = trackingManager;
 
             discussionManager.roomGenerator = roomGenerator;
             discussionManager.avatarGenerator = avatarGenerator;

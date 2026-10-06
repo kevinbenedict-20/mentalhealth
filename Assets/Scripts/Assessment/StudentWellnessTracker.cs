@@ -23,6 +23,17 @@ namespace MentalHealthApp.Assessment
         public float totalResponseConfidence;
         public int peerInteractionsObserved;
 
+        // Real-Time Camera & Behavioral Tracking Indicators
+        public float gazeSpeakerAttentionTime;
+        public float gazeAwayTime;
+        public int gazeSwitchCount;
+        public float totalHeadDistanceTraveled;
+        public string headMovementLevel = "Low";
+        public bool handTrackingAvailable = false;
+        public bool facialTrackingAvailable = false;
+        public string gazeTrackingLabel = "HEAD ORIENTATION / GAZE ESTIMATION";
+        public string facialTrackingStatus = "Facial-expression data not available on current hardware.";
+
         // Post-Session Metrics
         public int postSessionMoodRating;       // 1 (Low) to 10 (High)
         public int postSessionConfidenceRating; // 1 (Low) to 10 (High)
@@ -59,6 +70,17 @@ namespace MentalHealthApp.Assessment
         {
             currentData.responseCount++;
             currentData.totalResponseConfidence += confidenceRating;
+        }
+
+        public void RecordTrackingSnapshot(float speakerTime, float awayTime, int switches, float headDist, string movementLevel, bool handAvail, bool facialAvail)
+        {
+            currentData.gazeSpeakerAttentionTime = speakerTime;
+            currentData.gazeAwayTime = awayTime;
+            currentData.gazeSwitchCount = switches;
+            currentData.totalHeadDistanceTraveled = headDist;
+            currentData.headMovementLevel = movementLevel;
+            currentData.handTrackingAvailable = handAvail;
+            currentData.facialTrackingAvailable = facialAvail;
         }
 
         public void FinalizeSession(int postMood, int postConfidence)
