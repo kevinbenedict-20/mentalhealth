@@ -346,7 +346,16 @@ namespace MentalHealthApp.Discussion
         private string CleanResponse(string raw)
         {
             if (string.IsNullOrEmpty(raw)) return "";
-            return raw.Replace("\"", "").Trim();
+            string cleaned = raw.Replace("\"", "").Trim();
+            // Remove emoji surrogate pairs that cause font fallback warnings
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int i = 0; i < cleaned.Length; i++)
+            {
+                char c = cleaned[i];
+                if (char.IsSurrogate(c)) continue;
+                sb.Append(c);
+            }
+            return sb.ToString().Trim();
         }
 
         private string EscapeJsonString(string str)

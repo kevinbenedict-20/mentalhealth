@@ -286,7 +286,7 @@ namespace MentalHealthApp.UI
             toggleChatBtn = btnObj.AddComponent<Button>();
             toggleChatBtn.targetGraphic = img;
 
-            GameObject tObj = AddText(btnObj, "💬 Discussion Log", 16, Color.white, new Vector2(170, 35), Vector3.zero);
+            GameObject tObj = AddText(btnObj, "Discussion Log", 16, Color.white, new Vector2(170, 35), Vector3.zero);
             tObj.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
             // Chat History Panel
