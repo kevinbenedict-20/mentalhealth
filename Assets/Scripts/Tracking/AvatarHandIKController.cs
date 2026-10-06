@@ -101,11 +101,52 @@ namespace MentalHealthApp.Tracking
 
             if (!isVRRightTracked && vrCamera != null)
             {
-                Vector3 mouseNormalized = new Vector3((Input.mousePosition.x / Screen.width) - 0.5f, (Input.mousePosition.y / Screen.height) - 0.5f, 0);
+                Vector3 currentMousePos = GetCrossSystemMousePos();
+                Vector3 mouseNormalized = new Vector3((currentMousePos.x / Screen.width) - 0.5f, (currentMousePos.y / Screen.height) - 0.5f, 0);
                 Vector3 dynamicRightOffset = rightHandRestOffset + new Vector3(mouseNormalized.x * 0.25f, mouseNormalized.y * 0.18f, 0);
                 
                 targetRightPos = vrCamera.transform.TransformPoint(dynamicRightOffset);
                 targetRightRot = vrCamera.transform.rotation * Quaternion.Euler(15f + (mouseNormalized.y * -20f), -20f + (mouseNormalized.x * 20f), 10f);
+            }
+        }
+
+        private Vector3 GetCrossSystemMousePos()
+        {
+            // Try New Input System via Reflection first to prevent InvalidOperationException
+            try
+            {
+                System.Type mouseType = System.Type.GetType("UnityEngine.InputSystem.Mouse, Unity.InputSystem");
+                if (mouseType != null)
+                {
+                    System.Reflection.PropertyInfo currentMouseProp = mouseType.GetProperty("current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    object currentMouse = currentMouseProp?.GetValue(null);
+
+                    if (currentMouse != null)
+                    {
+                        System.Reflection.PropertyInfo positionProp = mouseType.GetProperty("position");
+                        object posControl = positionProp?.GetValue(currentMouse);
+                        if (posControl != null)
+                        {
+                            System.Reflection.MethodInfo readValueMethod = posControl.GetType().GetMethod("ReadValue");
+                            if (readValueMethod != null)
+                            {
+                                Vector2 val = (Vector2)readValueMethod.Invoke(posControl, null);
+                                return new Vector3(val.x, val.y, 0);
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // Fallback to legacy Input safely
+            try
+            {
+                return Input.mousePosition;
+            }
+            catch
+            {
+                return new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0);
             }
         }
 
