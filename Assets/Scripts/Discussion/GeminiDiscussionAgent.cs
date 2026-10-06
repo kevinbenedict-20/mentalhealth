@@ -56,7 +56,25 @@ namespace MentalHealthApp.Discussion
             "Prioritizing consistent sleep hygiene completely changed how I handle exam week pressure.",
             "Learning to say no to extra non-essential commitments gives me space to recharge mentally.",
             "Active listening and validating each other's ideas makes group discussions feel like a safe haven.",
-            "What is a personal stress indicator that tells you it's time to take a mental break?"
+            "What is a personal stress indicator that tells you it's time to take a mental break?",
+            "How do you stay motivated when an assignment feels completely intimidating or tedious?",
+            "Have you ever tried time-blocking your day, and did it help reduce your evening study stress?",
+            "What's your go-to strategy when you feel like you're falling behind on group project deliverables?",
+            "I've started turning off my notifications during study sessions, and my focus level doubled almost immediately.",
+            "When deadlines overlap, I rank tasks by urgency rather than trying to finish everything at once.",
+            "Building a supportive peer study circle makes preparing for tough exams feel less isolating.",
+            "What advice would you give to a freshman struggling to balance campus social life and coursework?",
+            "How do you check in on a classmate who seems quiet or overwhelmed during group meetings?",
+            "I find that breaking long assignments into 25-minute sprints helps me overcome initial procrastination.",
+            "Taking time out for hobbies without feeling guilty is essential for preventing long-term burnout.",
+            "What is one communication habit that has helped your project teams run smoothly without friction?",
+            "How do you restore your energy when you feel mentally exhausted after a long lab or lecture series?",
+            "Normalizing honest conversations about academic pressure helps everyone feel more supported.",
+            "What personal boundary has had the biggest positive impact on your mental well-being this semester?",
+            "How do you handle constructive criticism from peers without taking it personally?",
+            "Creating a calm study environment free of clutter makes a surprisingly big difference in my focus.",
+            "What is a positive habit you built this year that you wish you had started earlier in college?",
+            "How do you reset your mindset after experiencing an unexpected setback on a test or project?"
         };
 
         [Header("Question Memory Reference")]
@@ -66,13 +84,16 @@ namespace MentalHealthApp.Discussion
         {
             if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
+            string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
+
             string systemPrompt = string.Format(
-                "You are participating in an authentic college student mental health group discussion. " +
-                "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
-                "Topic: '{3}'. " +
-                "Previous statements in the group:\n{4}\n" +
-                "CRITICAL RULE: Give a completely unique, highly creative, empathetic 1-2 sentence statement or tip on the topic. DO NOT repeat any previous ideas, phrases, or questions.",
-                sessionGuid, peerName, peerPersona, topic, historyContext
+                "You are participating in an interactive, highly dynamic college student mental health group discussion. " +
+                "Random Seed: {0}. Your name is {1} and your distinct personality is: {2}. " +
+                "Current Discussion Topic: '{3}'. " +
+                "Recent dialogue history:\n{4}\n" +
+                "CRITICAL INSTRUCTION: Generate a completely unique, highly creative, empathetic 1-2 sentence peer statement or personal insight on the topic. " +
+                "Express a distinct perspective matching your persona. DO NOT repeat any previous ideas, phrases, or questions.",
+                uniqueSeed, peerName, peerPersona, topic, historyContext
             );
 
             yield return SendGeminiRequest(systemPrompt, (res) =>
@@ -92,14 +113,16 @@ namespace MentalHealthApp.Discussion
         {
             if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
             string historyContext = string.Join("\n", recentDialogueHistory.ToArray());
+            string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
 
             string systemPrompt = string.Format(
-                "You are participating in an interactive college student mental health group discussion. " +
-                "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
-                "Topic: '{3}'. " +
-                "Previous statements in the group:\n{4}\n" +
-                "CRITICAL RULE: DO NOT REPEAT ANY PREVIOUS QUESTION OR PHRASE. Ask a fresh, insightful, open-ended 1-sentence question for the group to explore.",
-                sessionGuid, peerName, peerPersona, topic, historyContext
+                "You are participating in an intuitive college student mental health group discussion. " +
+                "Random Seed: {0}. Your name is {1} and your persona is: {2}. " +
+                "Current Topic: '{3}'. " +
+                "Recent dialogue context:\n{4}\n" +
+                "CRITICAL INSTRUCTION: Ask a fresh, intuitive, highly open-ended 1-sentence question for the group and Kevin to reflect on. " +
+                "Make it thoughtful, authentic, and unique. DO NOT repeat any previous questions, concepts, or wording.",
+                uniqueSeed, peerName, peerPersona, topic, historyContext
             );
 
             yield return SendGeminiRequest(systemPrompt, (res) =>
@@ -118,12 +141,15 @@ namespace MentalHealthApp.Discussion
         public IEnumerator GeneratePeerResponse(string peerName, string peerPersona, string topic, string studentInput, Action<string> onResponseReceived)
         {
             if (questionHistory == null) questionHistory = GetComponent<GDQuestionHistory>();
+            string uniqueSeed = Guid.NewGuid().ToString().Substring(0, 6);
+
             string systemPrompt = string.Format(
                 "You are participating in a supportive college group discussion on student mental health. " +
-                "Session ID: {0}. Your name is {1} and your persona is: {2}. " +
-                "Topic: '{3}'. The student (Kevin) just said: \"{4}\". " +
-                "CRITICAL RULE: Give a fresh, dynamic, empathetic 2-sentence response building directly on Kevin's input. Do NOT repeat previous phrases.",
-                sessionGuid, peerName, peerPersona, topic, studentInput
+                "Random Seed: {0}. Your name is {1} and your persona is: {2}. " +
+                "Topic: '{3}'. The assessed student (Kevin) just shared: \"{4}\". " +
+                "CRITICAL INSTRUCTION: Respond directly to Kevin's statement with an empathetic, thoughtful 2-sentence feedback or follow-up reflection. " +
+                "Acknowledge Kevin's specific point and build upon it naturally. Do NOT repeat previous phrases.",
+                uniqueSeed, peerName, peerPersona, topic, studentInput
             );
 
             yield return SendGeminiRequest(systemPrompt, (res) =>

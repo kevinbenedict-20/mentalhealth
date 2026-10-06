@@ -475,17 +475,41 @@ namespace MentalHealthApp.UI
             onResponseSubmittedCallback = callback;
             promptTopicText.text = "Topic: " + topic;
 
-            if (topic.Contains("Workload"))
+            if (topic.Contains("Workload") || topic.Contains("Exam"))
             {
-                option1Text.text = "I prioritize breaking tasks into daily sub-goals to stay calm and organized.";
-                option2Text.text = "I set strict study boundaries and block out time for rest and relaxation.";
-                option3Text.text = "I reach out to peers or mentors early whenever assignment doubts arise.";
+                string[][] workloadPools = new string[][]
+                {
+                    new string[] { "I prioritize breaking complex assignments into daily sub-goals to stay calm and focused.", "I set strict study boundaries and block out time for rest and relaxation.", "I reach out to peers or professors early whenever doubts arise." },
+                    new string[] { "I use time-blocking and turn off phone notifications to eliminate distraction during revision.", "I focus on high-impact priorities first rather than stressing over minor details.", "I practice rhythmic breathing check-ins whenever exam anxiety starts mounting." }
+                };
+                int setIdx = UnityEngine.Random.Range(0, workloadPools.Length);
+                option1Text.text = workloadPools[setIdx][0];
+                option2Text.text = workloadPools[setIdx][1];
+                option3Text.text = workloadPools[setIdx][2];
             }
-            else if (topic.Contains("Collaboration"))
+            else if (topic.Contains("Collaboration") || topic.Contains("Communication"))
             {
-                option1Text.text = "I value clear roles and encouraging all team members to share ideas freely.";
-                option2Text.text = "I focus on active listening and building agreement on core project goals.";
-                option3Text.text = "I establish open feedback channels to resolve differences constructively.";
+                string[][] collabPools = new string[][]
+                {
+                    new string[] { "I value defining clear team roles and encouraging quiet members to share their insights.", "I focus on active listening and building common agreement on core project goals.", "I establish transparent feedback channels early to address conflicting priorities." },
+                    new string[] { "I encourage frequent check-ins so no team member feels isolated with their workload.", "I handle disagreements by focusing on shared project goals rather than personal opinion.", "I make sure we celebrate small milestones together to maintain positive team morale." }
+                };
+                int setIdx = UnityEngine.Random.Range(0, collabPools.Length);
+                option1Text.text = collabPools[setIdx][0];
+                option2Text.text = collabPools[setIdx][1];
+                option3Text.text = collabPools[setIdx][2];
+            }
+            else if (topic.Contains("Peer Pressure") || topic.Contains("Resilience"))
+            {
+                option1Text.text = "I stay true to my personal goals and feel confident setting clear boundaries with peers.";
+                option2Text.text = "I seek out friends who respect my priorities and encourage mutual growth.";
+                option3Text.text = "I view setbacks as learning opportunities rather than taking criticism personally.";
+            }
+            else if (topic.Contains("Burnout") || topic.Contains("Habits"))
+            {
+                option1Text.text = "I schedule mandatory non-academic downtime to recharge before exhaustion sets in.";
+                option2Text.text = "I build small, consistent daily habits like hydration and short walks to maintain steady energy.";
+                option3Text.text = "I talk openly with my support circle when workload stress starts feeling overwhelming.";
             }
             else
             {
