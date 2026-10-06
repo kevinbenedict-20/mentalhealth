@@ -66,6 +66,13 @@ namespace MentalHealthApp.Core
                 }
             }
 
+            // Safe cross-input system mouse reading without throwing InvalidOperationException
+            bool mousePressed = false;
+            bool mouseReleased = false;
+            Vector3 mousePos = Vector3.zero;
+
+            GetCrossSystemMouseInput(out mousePressed, out mouseReleased, out mousePos);
+
             if (mousePressed)
             {
                 isDragging = true;
