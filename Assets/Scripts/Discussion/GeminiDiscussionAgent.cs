@@ -31,6 +31,24 @@ namespace MentalHealthApp.Discussion
         public string text;
     }
 
+    [Serializable]
+    public class OpenAIResponseData
+    {
+        public OpenAIChoice[] choices;
+    }
+
+    [Serializable]
+    public class OpenAIChoice
+    {
+        public OpenAIMessage message;
+    }
+
+    [Serializable]
+    public class OpenAIMessage
+    {
+        public string content;
+    }
+
     public class GeminiDiscussionAgent : MonoBehaviour
     {
         [Header("API Settings")]
@@ -168,7 +186,19 @@ namespace MentalHealthApp.Discussion
         {
             if (string.IsNullOrEmpty(apiKey))
             {
+                LoadSecureAPIKey();
+            }
+
+            if (string.IsNullOrEmpty(apiKey))
+            {
                 onResult?.Invoke(GetUniqueFallbackStatement());
+                yield break;
+            }
+
+            // Route to OpenAI API if key starts with sk-
+            if (apiKey.Trim().StartsWith("sk-"))
+            {
+                yield return SendOpenAIRequest(prompt, onResult);
                 yield break;
             }
 
@@ -209,6 +239,44 @@ namespace MentalHealthApp.Discussion
             }
         }
 
+        private IEnumerator SendOpenAIRequest(string prompt, Action<string> onResult)
+        {
+            string url = "https://api.openai.com/v1/chat/completions";
+            string jsonPayload = "{\"model\":\"gpt-4o-mini\",\"messages\":[{\"role\":\"system\",\"content\":\"" + EscapeJsonString(prompt) + "\"}],\"temperature\":0.85}";
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
+
+            using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
+            {
+                request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+                request.SetRequestHeader("Authorization", "Bearer " + apiKey.Trim());
+
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    try
+                    {
+                        string responseJson = request.downloadHandler.text;
+                        OpenAIResponseData parsed = JsonUtility.FromJson<OpenAIResponseData>(responseJson);
+                        if (parsed != null && parsed.choices != null && parsed.choices.Length > 0 && parsed.choices[0].message != null)
+                        {
+                            string aiText = parsed.choices[0].message.content.Trim();
+                            onResult?.Invoke(aiText);
+                            yield break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError("Error parsing OpenAI API JSON: " + ex.Message);
+                    }
+                }
+
+                onResult?.Invoke(GetUniqueFallbackStatement());
+            }
+        }
+
         private string GetUniqueFallbackStatement()
         {
             for (int i = 0; i < nonRepeatingPeerPool.Length; i++)
@@ -238,8 +306,38 @@ namespace MentalHealthApp.Discussion
 
         public string LoadSecureAPIKey()
         {
-            // 1. Check System Environment Variable first
+            // 1. Check Project Root Git-Ignored Config File
+            try
+            {
+                string rootConfigPath = System.IO.Path.Combine(Application.dataPath, "../gemini_config.json");
+                if (System.IO.File.Exists(rootConfigPath))
+                {
+                    string json = System.IO.File.ReadAllText(rootConfigPath);
+                    if (json.Contains("apiKey"))
+                    {
+                        int idx = json.IndexOf("\"apiKey\":");
+                        if (idx != -1)
+                        {
+                            int start = json.IndexOf("\"", idx + 9) + 1;
+                            int end = json.IndexOf("\"", start);
+                            if (start > 0 && end > start)
+                            {
+                                string k = json.Substring(start, end - start).Trim();
+                                if (!string.IsNullOrEmpty(k))
+                                {
+                                    apiKey = k;
+                                    return apiKey;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // 2. Check System Environment Variable
             string envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+            if (string.IsNullOrEmpty(envKey)) envKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
             if (string.IsNullOrEmpty(envKey)) envKey = Environment.GetEnvironmentVariable("UNITY_GEMINI_API_KEY");
             if (!string.IsNullOrEmpty(envKey))
             {
@@ -247,7 +345,7 @@ namespace MentalHealthApp.Discussion
                 return apiKey;
             }
 
-            // 2. Check Local Persistent Device Storage
+            // 3. Check Local Persistent Device Storage
             string configPath = System.IO.Path.Combine(Application.persistentDataPath, "gemini_key.json");
             if (System.IO.File.Exists(configPath))
             {
@@ -263,7 +361,7 @@ namespace MentalHealthApp.Discussion
                 catch { }
             }
 
-            // 3. Check PlayerPrefs Fallback
+            // 4. Check PlayerPrefs Fallback
             string prefKey = PlayerPrefs.GetString("GEMINI_SECURE_KEY", "");
             if (!string.IsNullOrEmpty(prefKey))
             {
@@ -282,15 +380,19 @@ namespace MentalHealthApp.Discussion
 
             try
             {
-                // Save locally outside git repo to persistentDataPath
+                // Save locally outside git repo to persistentDataPath and root config
                 string configPath = System.IO.Path.Combine(Application.persistentDataPath, "gemini_key.json");
                 System.IO.File.WriteAllText(configPath, trimmed);
+
+                string rootConfigPath = System.IO.Path.Combine(Application.dataPath, "../gemini_config.json");
+                System.IO.File.WriteAllText(rootConfigPath, "{\n  \"apiKey\": \"" + trimmed + "\"\n}");
+
                 PlayerPrefs.SetString("GEMINI_SECURE_KEY", trimmed);
                 PlayerPrefs.Save();
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("Could not persist Gemini key locally: " + ex.Message);
+                Debug.LogWarning("Could not persist API key locally: " + ex.Message);
             }
         }
     }

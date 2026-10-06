@@ -334,21 +334,23 @@ namespace MentalHealthApp.UI
             GameObject textArea = AddText(idObj, "", 18, Color.white, new Vector2(500, 35));
             studentIdInput.textComponent = textArea.GetComponent<TextMeshProUGUI>();
 
-            // Optional Gemini API Key Field
+            // Manual Gemini API Key Input Field Section
+            AddText(preAssessmentPanel, "Type or Paste Gemini API Key Manually (Optional):", 16, new Color(0.4f, 0.85f, 1.0f), new Vector2(520, 25), new Vector2(0, 152));
+
             GameObject keyObj = new GameObject("APIKeyInput");
             keyObj.transform.SetParent(preAssessmentPanel.transform, false);
             RectTransform keyRect = keyObj.AddComponent<RectTransform>();
-            keyRect.anchoredPosition = new Vector3(0, 125, 0);
+            keyRect.anchoredPosition = new Vector3(0, 120, 0);
             keyRect.sizeDelta = new Vector2(520, 45);
             Image keyBg = keyObj.AddComponent<Image>();
             keyBg.color = new Color(0.18f, 0.22f, 0.28f);
             geminiApiKeyInput = keyObj.AddComponent<TMP_InputField>();
-            geminiApiKeyInput.contentType = TMP_InputField.ContentType.Password;
+            geminiApiKeyInput.contentType = TMP_InputField.ContentType.Standard;
 
-            GameObject keyPlaceholder = AddText(keyObj, "Gemini API Key (Optional for Live AI Peers)", 16, Color.gray, new Vector2(500, 35));
+            GameObject keyPlaceholder = AddText(keyObj, "Type or Paste API Key Here (e.g. AIzaSy...)", 15, Color.gray, new Vector2(500, 35));
             geminiApiKeyInput.placeholder = keyPlaceholder.GetComponent<TextMeshProUGUI>();
 
-            GameObject keyTextArea = AddText(keyObj, "", 18, Color.white, new Vector2(500, 35));
+            GameObject keyTextArea = AddText(keyObj, "", 16, Color.white, new Vector2(500, 35));
             geminiApiKeyInput.textComponent = keyTextArea.GetComponent<TextMeshProUGUI>();
 
             // Auto-load existing secure key if stored locally or in environment variable
