@@ -165,7 +165,7 @@ namespace MentalHealthApp.Discussion
 
             if (uiController != null)
             {
-                uiController.AdaptCanvasForVR(true);
+                uiController.AdaptCanvasForVR(true, seatPos);
             }
         }
 

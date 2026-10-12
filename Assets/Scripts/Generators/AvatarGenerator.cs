@@ -433,6 +433,14 @@ namespace MentalHealthApp.Generators
             {
                 MentalHealthApp.Tracking.AvatarHandIKController handIK = root.AddComponent<MentalHealthApp.Tracking.AvatarHandIKController>();
                 handIK.FindHandsIfNull();
+
+                // In 1st-person VR POV, hide Kevin's own head meshes so they never obstruct camera view of other peers
+                foreach (Renderer r in head.GetComponentsInChildren<Renderer>(true))
+                {
+                    r.enabled = false;
+                }
+                Renderer headRend = head.GetComponent<Renderer>();
+                if (headRend != null) headRend.enabled = false;
             }
 
             return new StudentAvatarData

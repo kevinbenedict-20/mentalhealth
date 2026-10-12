@@ -16,7 +16,7 @@ namespace MentalHealthApp.Core
         public float maxPitch = 85f;
 
         [Header("Meta Quest 3 6DoF & Seated Eye Scale")]
-        public Vector3 seatEyeOffset = new Vector3(0, 1.18f, 0); // Seated 1:1 scale at table eye-level
+        public Vector3 seatEyeOffset = new Vector3(0, 0.94f, 0); // Natural eye socket level aligned with peer avatars
         public bool enable6DoFPositionalTracking = true;
         public bool enable3DSpatialAudio = true;
         public float positionalDamping = 8.0f;
@@ -408,13 +408,14 @@ namespace MentalHealthApp.Core
             baseSeatRotation = seatRot;
             transform.position = baseSeatPosition + seatEyeOffset;
 
-            Vector3 lookDir = (Vector3.zero - transform.position).normalized;
-            lookDir.y = 0;
+            // Direct level eye contact with other avatars across the conference table
+            Vector3 lookTarget = new Vector3(0, transform.position.y, 0);
+            Vector3 lookDir = (lookTarget - transform.position).normalized;
             if (lookDir != Vector3.zero)
             {
-                Quaternion targetRot = Quaternion.LookRotation(lookDir);
+                Quaternion targetRot = Quaternion.LookRotation(lookDir, Vector3.up);
                 currentYaw = targetRot.eulerAngles.y;
-                currentPitch = 5f;
+                currentPitch = 0f; // Level eye-line directly facing peer avatars across the table
                 transform.rotation = Quaternion.Euler(currentPitch, currentYaw, 0);
             }
         }

@@ -119,7 +119,7 @@ namespace MentalHealthApp.UI
             }
         }
 
-        public void AdaptCanvasForVR(bool vrMode)
+        public void AdaptCanvasForVR(bool vrMode, Vector3 seatPosition = default)
         {
             Canvas canvas = gameObject.GetComponent<Canvas>();
             if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
@@ -128,9 +128,17 @@ namespace MentalHealthApp.UI
             {
                 canvas.renderMode = RenderMode.WorldSpace;
                 canvas.worldCamera = Camera.main;
-                transform.position = new Vector3(-0.95f, 1.15f, -0.65f);
-                transform.rotation = Quaternion.Euler(15f, 32f, 0);
-                transform.localScale = new Vector3(0.0011f, 0.0011f, 0.0011f);
+
+                // Seat position fallback if not provided
+                Vector3 seat = (seatPosition != default) ? seatPosition : new Vector3(0.95f, 0, 1.35f);
+                Vector3 toCenter = (Vector3.zero - seat).normalized;
+                toCenter.y = 0;
+
+                // Position cleanly on the conference table in front of the player (y = 0.82m) tilted 30 deg back
+                // This keeps the eye-line completely open so other avatar faces are 100% visible across the table!
+                transform.position = seat + toCenter * 0.75f + new Vector3(0, 0.82f, 0);
+                transform.rotation = Quaternion.LookRotation(toCenter, Vector3.up) * Quaternion.Euler(30f, 0, 0);
+                transform.localScale = new Vector3(0.00085f, 0.00085f, 0.00085f);
             }
             else
             {
