@@ -105,8 +105,8 @@ namespace MentalHealthApp.UI
             SetupChatHistoryUI();
             SetupVRViewControlsUI();
 
-            // Default State
-            preAssessmentPanel.SetActive(true);
+            // Default State - Start directly in discussion without modal blockage
+            preAssessmentPanel.SetActive(false);
             responsePromptPanel.SetActive(false);
             postAssessmentPanel.SetActive(false);
             resultsDashboardPanel.SetActive(false);

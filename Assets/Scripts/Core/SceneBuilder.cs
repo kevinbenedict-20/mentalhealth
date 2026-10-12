@@ -36,6 +36,11 @@ namespace MentalHealthApp.Core
 
             builder.ClearExistingEnvironment();
             builder.BuildCompleteEnvironment();
+
+            if (builder.discussionManager != null)
+            {
+                builder.discussionManager.StartSession();
+            }
         }
 
         private void Awake()

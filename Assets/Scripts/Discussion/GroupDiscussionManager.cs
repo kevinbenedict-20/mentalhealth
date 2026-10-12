@@ -123,6 +123,16 @@ namespace MentalHealthApp.Discussion
             recentDialogueHistory.Clear();
             currentPhase = DiscussionPhase.Introduction;
 
+            // Directly dismiss pre-assessment panel so discussion begins immediately
+            if (uiController != null && uiController.preAssessmentPanel != null)
+            {
+                uiController.preAssessmentPanel.SetActive(false);
+            }
+            if (wellnessTracker != null)
+            {
+                wellnessTracker.InitializeSession("Kevin", 3, 8);
+            }
+
             // 1. Lock camera strictly into VR First-Person POV at Seat 1 (Kevin)
             SwitchToVRSeatPOV();
 
