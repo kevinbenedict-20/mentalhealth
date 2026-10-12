@@ -36,9 +36,11 @@ namespace MentalHealthApp.Core
         private Vector3 target6DoFPosOffset = Vector3.zero;
         private Vector3 current6DoFPosOffset = Vector3.zero;
 
+        private LineRenderer laserPointer;
+        private bool wasTriggerPressedLastFrame = false;
+
         private void Awake()
         {
-            // Auto-enable XR & OpenXR / Oculus Display Subsystems on Play
             AutoInitializeXRHeadset();
         }
 
@@ -49,6 +51,7 @@ namespace MentalHealthApp.Core
             currentPitch = angles.x;
 
             SetupSpatialAudio();
+            EnsureLaserPointer();
         }
 
         private void AutoInitializeXRHeadset()
@@ -57,7 +60,6 @@ namespace MentalHealthApp.Core
             {
                 XRSettings.enabled = true;
 
-                // Safely invoke XRGeneralSettings.Instance.Manager.StartSubsystems() via Reflection
                 Type xrGeneralType = Type.GetType("UnityEngine.XR.Management.XRGeneralSettings, Unity.XR.Management");
                 if (xrGeneralType != null)
                 {
@@ -134,6 +136,23 @@ namespace MentalHealthApp.Core
             AudioClip clip = AudioClip.Create("VRPing", length, 1, sampleRate, false);
             clip.SetData(samples, 0);
             return clip;
+        }
+
+        private void EnsureLaserPointer()
+        {
+            if (laserPointer == null)
+            {
+                GameObject laserObj = new GameObject("QuestLaserPointer");
+                laserObj.transform.SetParent(transform, false);
+                laserPointer = laserObj.AddComponent<LineRenderer>();
+                laserPointer.startWidth = 0.005f;
+                laserPointer.endWidth = 0.002f;
+                laserPointer.material = new Material(Shader.Find("Sprites/Default"));
+                laserPointer.startColor = new Color(0.2f, 0.8f, 1.0f, 0.8f);
+                laserPointer.endColor = new Color(0.2f, 0.8f, 1.0f, 0.2f);
+                laserPointer.positionCount = 2;
+                laserPointer.enabled = false;
+            }
         }
 
         private void Update()
@@ -231,24 +250,89 @@ namespace MentalHealthApp.Core
         private void CheckQuestControllerInput()
         {
             if (!enableQuestControllerRay) return;
+            EnsureLaserPointer();
 
             InputDevice rightHand = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
             InputDevice leftHand = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
 
-            bool triggerPressed = false;
-            if (rightHand.isValid && rightHand.TryGetFeatureValue(CommonUsages.triggerButton, out bool rightTrig) && rightTrig) triggerPressed = true;
-            if (leftHand.isValid && leftHand.TryGetFeatureValue(CommonUsages.triggerButton, out bool leftTrig) && leftTrig) triggerPressed = true;
+            Ray ray;
+            bool hasControllerRay = false;
 
-            if (triggerPressed || Input.GetMouseButtonDown(0))
+            if (rightHand.isValid && rightHand.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 rPos) && rightHand.TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion rRot))
             {
-                Ray ray = new Ray(transform.position, transform.forward);
-                if (Physics.Raycast(ray, out RaycastHit hit, 10f))
+                ray = new Ray(baseSeatPosition + seatEyeOffset + rPos, rRot * Vector3.forward);
+                hasControllerRay = true;
+            }
+            else if (leftHand.isValid && leftHand.TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 lPos) && leftHand.TryGetFeatureValue(CommonUsages.deviceRotation, out Quaternion lRot))
+            {
+                ray = new Ray(baseSeatPosition + seatEyeOffset + lPos, lRot * Vector3.forward);
+                hasControllerRay = true;
+            }
+            else
+            {
+                ray = new Ray(transform.position, transform.forward);
+            }
+
+            bool isTriggerDown = false;
+            if (rightHand.isValid)
+            {
+                if (rightHand.TryGetFeatureValue(CommonUsages.triggerButton, out bool rTrig) && rTrig) isTriggerDown = true;
+                if (rightHand.TryGetFeatureValue(CommonUsages.primaryButton, out bool rA) && rA) isTriggerDown = true;
+            }
+            if (leftHand.isValid)
+            {
+                if (leftHand.TryGetFeatureValue(CommonUsages.triggerButton, out bool lTrig) && lTrig) isTriggerDown = true;
+                if (leftHand.TryGetFeatureValue(CommonUsages.primaryButton, out bool lX) && lX) isTriggerDown = true;
+            }
+            if (Input.GetMouseButton(0)) isTriggerDown = true;
+
+            bool justPressed = isTriggerDown && !wasTriggerPressedLastFrame;
+            wasTriggerPressedLastFrame = isTriggerDown;
+
+            float rayLength = 5.0f;
+            bool hitButton = false;
+
+            if (Physics.Raycast(ray, out RaycastHit hit, 10f))
+            {
+                rayLength = hit.distance;
+                UnityEngine.UI.Button btn = hit.collider.GetComponentInParent<UnityEngine.UI.Button>();
+                if (btn != null && btn.interactable)
                 {
-                    UnityEngine.UI.Button btn = hit.collider.GetComponent<UnityEngine.UI.Button>();
-                    if (btn != null && btn.interactable)
+                    hitButton = true;
+                    if (laserPointer != null)
                     {
-                        btn.onClick.Invoke();
+                        laserPointer.startColor = new Color(0.2f, 1.0f, 0.4f, 0.9f);
                     }
+
+                    if (justPressed)
+                    {
+                        Debug.Log("[Quest 3 Controller] Clicked Option Button: " + btn.name);
+                        btn.onClick.Invoke();
+
+                        if (rightHand.isValid)
+                        {
+                            HapticCapabilities caps;
+                            if (rightHand.TryGetHapticCapabilities(out caps) && caps.supportsImpulse)
+                            {
+                                rightHand.SendHapticImpulse(0, 0.5f, 0.1f);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (laserPointer != null)
+            {
+                if (hasControllerRay || XRSettings.isDeviceActive)
+                {
+                    laserPointer.enabled = true;
+                    if (!hitButton) laserPointer.startColor = new Color(0.2f, 0.8f, 1.0f, 0.7f);
+                    laserPointer.SetPosition(0, ray.origin);
+                    laserPointer.SetPosition(1, ray.origin + ray.direction * rayLength);
+                }
+                else
+                {
+                    laserPointer.enabled = false;
                 }
             }
         }

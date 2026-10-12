@@ -162,6 +162,11 @@ namespace MentalHealthApp.Discussion
             {
                 vrHeadLook.SetSeatPOVPosition(seatPos, Quaternion.identity);
             }
+
+            if (uiController != null)
+            {
+                uiController.AdaptCanvasForVR(true);
+            }
         }
 
         private IEnumerator RunDiscussionLoop()

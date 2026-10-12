@@ -112,6 +112,31 @@ namespace MentalHealthApp.UI
             resultsDashboardPanel.SetActive(false);
             if (subtitlePanel != null) subtitlePanel.SetActive(false);
             if (chatHistoryPanel != null) chatHistoryPanel.SetActive(false);
+
+            if (UnityEngine.XR.XRSettings.isDeviceActive || Application.platform == RuntimePlatform.Android)
+            {
+                AdaptCanvasForVR(true);
+            }
+        }
+
+        public void AdaptCanvasForVR(bool vrMode)
+        {
+            Canvas canvas = gameObject.GetComponent<Canvas>();
+            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
+
+            if (vrMode)
+            {
+                canvas.renderMode = RenderMode.WorldSpace;
+                canvas.worldCamera = Camera.main;
+                transform.position = new Vector3(-0.95f, 1.15f, -0.65f);
+                transform.rotation = Quaternion.Euler(15f, 32f, 0);
+                transform.localScale = new Vector3(0.0011f, 0.0011f, 0.0011f);
+            }
+            else
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                transform.localScale = Vector3.one;
+            }
         }
 
         private void ClearExistingPanels()
@@ -708,6 +733,9 @@ namespace MentalHealthApp.UI
 
             Button btn = btnObj.AddComponent<Button>();
             btn.targetGraphic = img;
+
+            BoxCollider col = btnObj.AddComponent<BoxCollider>();
+            col.size = new Vector3(size.x, size.y, 15f);
 
             GameObject tObj = AddText(btnObj, labelText, 18, Color.white, size, Vector3.zero, false);
             tObj.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
